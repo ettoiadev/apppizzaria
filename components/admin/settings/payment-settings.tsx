@@ -1,0 +1,205 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
+import { Save, CreditCard, Banknote, QrCode, Smartphone } from "lucide-react"
+
+export function PaymentSettings() {
+  const [settings, setSettings] = useState({
+    pixEnabled: true,
+    pixKey: "contato@pizzaexpress.com",
+    cashEnabled: true,
+    cardOnDeliveryEnabled: true,
+    creditCardEnabled: false,
+    debitCardEnabled: false,
+    stripePublicKey: "",
+    stripeSecretKey: "",
+    mercadoPagoAccessToken: "",
+    paypalClientId: "",
+  })
+
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setSettings((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSave = async () => {
+    setIsLoading(true)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    console.log("Saving payment settings:", settings)
+    setIsLoading(false)
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Métodos de Pagamento</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <QrCode className="w-6 h-6 text-blue-600" />
+                <div>
+                  <Label>PIX</Label>
+                  <p className="text-sm text-gray-600">Pagamento instantâneo via PIX</p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.pixEnabled}
+                onCheckedChange={(checked) => handleInputChange("pixEnabled", checked)}
+              />
+            </div>
+
+            {settings.pixEnabled && (
+              <div className="ml-9 space-y-2">
+                <Label htmlFor="pixKey">Chave PIX</Label>
+                <Input
+                  id="pixKey"
+                  value={settings.pixKey}
+                  onChange={(e) => handleInputChange("pixKey", e.target.value)}
+                  placeholder="Digite sua chave PIX"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <Banknote className="w-6 h-6 text-green-600" />
+                <div>
+                  <Label>Dinheiro na Entrega</Label>
+                  <p className="text-sm text-gray-600">Pagamento em espécie na entrega</p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.cashEnabled}
+                onCheckedChange={(checked) => handleInputChange("cashEnabled", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-6 h-6 text-purple-600" />
+                <div>
+                  <Label>Cartão na Entrega</Label>
+                  <p className="text-sm text-gray-600">Débito ou crédito na entrega</p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.cardOnDeliveryEnabled}
+                onCheckedChange={(checked) => handleInputChange("cardOnDeliveryEnabled", checked)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pagamentos Online (Em Desenvolvimento)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg opacity-50">
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-6 h-6 text-blue-600" />
+                <div>
+                  <Label>Cartão de Crédito Online</Label>
+                  <p className="text-sm text-gray-600">Pagamento online com cartão de crédito</p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.creditCardEnabled}
+                onCheckedChange={(checked) => handleInputChange("creditCardEnabled", checked)}
+                disabled
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg opacity-50">
+              <div className="flex items-center gap-3">
+                <Smartphone className="w-6 h-6 text-orange-600" />
+                <div>
+                  <Label>Cartão de Débito Online</Label>
+                  <p className="text-sm text-gray-600">Pagamento online com cartão de débito</p>
+                </div>
+              </div>
+              <Switch
+                checked={settings.debitCardEnabled}
+                onCheckedChange={(checked) => handleInputChange("debitCardEnabled", checked)}
+                disabled
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4 opacity-50">
+            <h4 className="font-medium">Configurações de Gateway (Em Breve)</h4>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="stripePublicKey">Stripe - Chave Pública</Label>
+                <Input
+                  id="stripePublicKey"
+                  value={settings.stripePublicKey}
+                  onChange={(e) => handleInputChange("stripePublicKey", e.target.value)}
+                  placeholder="pk_test_..."
+                  disabled
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="stripeSecretKey">Stripe - Chave Secreta</Label>
+                <Input
+                  id="stripeSecretKey"
+                  type="password"
+                  value={settings.stripeSecretKey}
+                  onChange={(e) => handleInputChange("stripeSecretKey", e.target.value)}
+                  placeholder="sk_test_..."
+                  disabled
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mercadoPagoAccessToken">Mercado Pago - Access Token</Label>
+                <Input
+                  id="mercadoPagoAccessToken"
+                  type="password"
+                  value={settings.mercadoPagoAccessToken}
+                  onChange={(e) => handleInputChange("mercadoPagoAccessToken", e.target.value)}
+                  placeholder="APP_USR-..."
+                  disabled
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paypalClientId">PayPal - Client ID</Label>
+                <Input
+                  id="paypalClientId"
+                  value={settings.paypalClientId}
+                  onChange={(e) => handleInputChange("paypalClientId", e.target.value)}
+                  placeholder="AY..."
+                  disabled
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={isLoading}>
+          <Save className="w-4 h-4 mr-2" />
+          {isLoading ? "Salvando..." : "Salvar Configurações"}
+        </Button>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,26 @@
+{
+  "name": "Pizza Express - Delivery de Pizza",
+  "short_name": "Pizza Express",
+  "description": "O melhor delivery de pizza da cidade",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ef4444",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["food", "delivery"],
+  "lang": "pt-BR"
+}
