@@ -145,7 +145,16 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+
+    // Create a copy of formData and remove image-related properties
+    const dataToSubmit = { ...formData }
+
+    // Remove image-related properties from the data that will be sent to the API
+    delete dataToSubmit.image
+    delete dataToSubmit.showImage
+
+    // Call onSave with the cleaned data (without image properties)
+    onSave(dataToSubmit)
   }
 
   const addSize = () => {

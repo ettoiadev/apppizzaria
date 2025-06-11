@@ -71,7 +71,7 @@ export function Header({ onCartClick }: HeaderProps) {
                     Entrar
                   </Link>
                 </Button>
-                <Button size="sm" asChild>
+                <Button variant="default" size="sm" asChild>
                   <Link href="/cadastro">Cadastrar</Link>
                 </Button>
               </div>
