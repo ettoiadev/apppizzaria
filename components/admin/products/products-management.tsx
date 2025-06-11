@@ -38,11 +38,19 @@ export function ProductsManagement() {
 
   const loadProducts = async () => {
     try {
+      setLoading(true)
       const response = await fetch("/api/products")
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
       setProducts(data)
     } catch (error) {
       console.error("Error loading products:", error)
+      // You could show a toast notification here
+      setProducts([]) // Set empty array on error
     } finally {
       setLoading(false)
     }
@@ -51,10 +59,17 @@ export function ProductsManagement() {
   const loadCategories = async () => {
     try {
       const response = await fetch("/api/categories")
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
       setCategories(data)
     } catch (error) {
       console.error("Error loading categories:", error)
+      // You could show a toast notification here
+      setCategories([]) // Set empty array on error
     }
   }
 
@@ -94,12 +109,18 @@ export function ProductsManagement() {
         body: JSON.stringify(productData),
       })
 
-      if (response.ok) {
-        await loadProducts()
-        setProductModalOpen(false)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Erro ao salvar produto")
       }
+
+      await loadProducts()
+      setProductModalOpen(false)
+      setEditingProduct(null)
+      // You could show a success toast notification here
     } catch (error) {
       console.error("Error saving product:", error)
+      // You could show an error toast notification here
     }
   }
 
@@ -114,9 +135,9 @@ export function ProductsManagement() {
       )
 
       const response = await fetch(`/api/products/${productId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...product, available: !product.available }),
+        body: JSON.stringify({ available: !product.available }),
       })
 
       if (!response.ok) {
@@ -125,6 +146,7 @@ export function ProductsManagement() {
           prevProducts.map((p) => (p.id === productId ? { ...p, available: product.available } : p)),
         )
         console.error("Failed to update product availability")
+        // You could show a toast notification here
       }
     } catch (error) {
       console.error("Error toggling product availability:", error)
@@ -135,6 +157,7 @@ export function ProductsManagement() {
           prevProducts.map((p) => (p.id === productId ? { ...p, available: originalProduct.available } : p)),
         )
       }
+      // You could show a toast notification here
     }
   }
 
@@ -184,20 +207,26 @@ export function ProductsManagement() {
         method: "DELETE",
       })
 
-      if (response.ok) {
-        if (deletingItem.type === "product") {
-          await loadProducts()
-        } else {
-          await loadCategories()
-          if (selectedCategory === deletingItem.id) {
-            setSelectedCategory("all")
-          }
-        }
-        setDeleteModalOpen(false)
-        setDeletingItem(null)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Erro ao excluir item")
       }
+
+      if (deletingItem.type === "product") {
+        await loadProducts()
+      } else {
+        await loadCategories()
+        if (selectedCategory === deletingItem.id) {
+          setSelectedCategory("all")
+        }
+      }
+
+      setDeleteModalOpen(false)
+      setDeletingItem(null)
+      // You could show a success toast notification here
     } catch (error) {
       console.error("Error deleting item:", error)
+      // You could show an error toast notification here
     }
   }
 

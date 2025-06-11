@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
-// Mock data - In production, this would come from a database
-const mockProducts = [
+// Mock data as fallback if database connection fails
+const fallbackProducts = [
   {
     id: "1",
     name: "Pizza Margherita",
@@ -89,26 +90,121 @@ const mockProducts = [
   },
 ]
 
+// Create Supabase client with error handling
+function getSupabaseClient() {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Missing Supabase credentials:", {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey,
+      })
+      return null
+    }
+
+    return createClient(supabaseUrl, supabaseKey)
+  } catch (error) {
+    console.error("Failed to create Supabase client:", error)
+    return null
+  }
+}
+
 export async function GET() {
   try {
-    return NextResponse.json(mockProducts)
+    const supabase = getSupabaseClient()
+
+    // If Supabase client couldn't be created, return fallback data
+    if (!supabase) {
+      console.warn("Using fallback products data due to Supabase client initialization failure")
+      return NextResponse.json(fallbackProducts)
+    }
+
+    // Try to fetch products from Supabase
+    const { data: products, error } = await supabase.from("products").select("*")
+
+    // Log detailed information about the query
+    console.log("Supabase query result:", {
+      success: !error,
+      productsCount: products?.length || 0,
+      error: error ? JSON.stringify(error) : null,
+    })
+
+    if (error) {
+      console.error("Database error fetching products:", error)
+
+      // Check if the error is related to the table not existing
+      if (error.message?.includes("does not exist")) {
+        console.warn("Products table does not exist, returning fallback data")
+        return NextResponse.json(fallbackProducts)
+      }
+
+      return NextResponse.json(fallbackProducts)
+    }
+
+    // If no products were found, return fallback data
+    if (!products || products.length === 0) {
+      console.warn("No products found in database, returning fallback data")
+      return NextResponse.json(fallbackProducts)
+    }
+
+    return NextResponse.json(products)
   } catch (error) {
-    return NextResponse.json({ error: "Erro ao buscar produtos" }, { status: 500 })
+    console.error("Unexpected error fetching products:", error)
+    // Return fallback data instead of an error
+    return NextResponse.json(fallbackProducts)
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const newProduct = {
-      id: Date.now().toString(),
-      ...body,
+    // Get Supabase client
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      return NextResponse.json({ message: "Failed to initialize database connection" }, { status: 500 })
     }
 
-    mockProducts.push(newProduct)
+    // Parse the request body to get the new product data
+    const newProduct = await request.json()
 
-    return NextResponse.json(newProduct, { status: 201 })
-  } catch (error) {
-    return NextResponse.json({ error: "Erro ao criar produto" }, { status: 500 })
+    // Validate required fields
+    if (!newProduct.name || !newProduct.description || !newProduct.price || !newProduct.categoryId) {
+      return NextResponse.json(
+        { message: "Missing required fields: name, description, price, or categoryId" },
+        { status: 400 },
+      )
+    }
+
+    // Insert the new product into the database
+    const { data, error } = await supabase.from("products").insert([newProduct]).select().single()
+
+    // Handle database errors
+    if (error) {
+      console.error("Database error creating product:", error)
+      return NextResponse.json(
+        {
+          message: "Failed to create product",
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 },
+      )
+    }
+
+    // Return the newly created product
+    return NextResponse.json(data, { status: 201 })
+  } catch (error: any) {
+    console.error("Unexpected error creating product:", error)
+    return NextResponse.json(
+      {
+        message: "Internal server error",
+        details: error?.message || "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

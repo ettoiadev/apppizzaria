@@ -6,6 +6,7 @@ export interface Product {
   image: string
   categoryId: string
   available: boolean
+  showImage?: boolean
   sizes?: ProductSize[]
   toppings?: ProductTopping[]
 }
