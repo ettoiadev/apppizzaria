@@ -162,6 +162,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Parse the request body and log it immediately
+    const body = await request.json()
+    console.log("API received this body:", body)
+
     // Get Supabase client
     const supabase = getSupabaseClient()
     if (!supabase) {
@@ -169,17 +173,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Failed to initialize database connection" }, { status: 500 })
     }
 
-    // Parse the request body to get the new product data
-    let newProduct
-    try {
-      newProduct = await request.json()
-    } catch (parseError) {
-      console.error("Failed to parse request JSON:", parseError)
-      return NextResponse.json(
-        { message: "Invalid JSON in request body", details: "Request body must be valid JSON" },
-        { status: 400 },
-      )
-    }
+    // Use the parsed body as newProduct
+    const newProduct = body
 
     // Log the received data for debugging (without sensitive info)
     console.log("Received product data:", {
@@ -263,6 +258,15 @@ export async function POST(request: NextRequest) {
     // Return the newly created product
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
+    // Handle JSON parsing errors specifically
+    if (error instanceof SyntaxError) {
+      console.error("Failed to parse request JSON:", error)
+      return NextResponse.json(
+        { message: "Invalid JSON in request body", details: "Request body must be valid JSON" },
+        { status: 400 },
+      )
+    }
+
     console.error("Unexpected error creating product:", {
       message: error?.message,
       stack: error?.stack,
