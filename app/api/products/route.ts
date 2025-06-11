@@ -165,44 +165,114 @@ export async function POST(request: NextRequest) {
     // Get Supabase client
     const supabase = getSupabaseClient()
     if (!supabase) {
+      console.error("Failed to initialize Supabase client for POST request")
       return NextResponse.json({ message: "Failed to initialize database connection" }, { status: 500 })
     }
 
     // Parse the request body to get the new product data
-    const newProduct = await request.json()
-
-    // Validate required fields
-    if (!newProduct.name || !newProduct.description || !newProduct.price || !newProduct.categoryId) {
+    let newProduct
+    try {
+      newProduct = await request.json()
+    } catch (parseError) {
+      console.error("Failed to parse request JSON:", parseError)
       return NextResponse.json(
-        { message: "Missing required fields: name, description, price, or categoryId" },
+        { message: "Invalid JSON in request body", details: "Request body must be valid JSON" },
         { status: 400 },
       )
     }
 
+    // Log the received data for debugging (without sensitive info)
+    console.log("Received product data:", {
+      hasName: !!newProduct.name,
+      hasDescription: !!newProduct.description,
+      hasPrice: !!newProduct.price,
+      hasCategoryId: !!newProduct.categoryId,
+      categoryId: newProduct.categoryId,
+      priceType: typeof newProduct.price,
+    })
+
+    // Validate required fields
+    if (!newProduct.name || typeof newProduct.name !== "string" || newProduct.name.trim() === "") {
+      return NextResponse.json(
+        { message: "Missing or invalid required field: name must be a non-empty string" },
+        { status: 400 },
+      )
+    }
+
+    if (!newProduct.description || typeof newProduct.description !== "string" || newProduct.description.trim() === "") {
+      return NextResponse.json(
+        { message: "Missing or invalid required field: description must be a non-empty string" },
+        { status: 400 },
+      )
+    }
+
+    if (!newProduct.price || typeof newProduct.price !== "number" || newProduct.price <= 0) {
+      return NextResponse.json(
+        { message: "Missing or invalid required field: price must be a positive number" },
+        { status: 400 },
+      )
+    }
+
+    if (!newProduct.categoryId || typeof newProduct.categoryId !== "string" || newProduct.categoryId.trim() === "") {
+      return NextResponse.json(
+        { message: "Missing or invalid required field: categoryId must be a non-empty string" },
+        { status: 400 },
+      )
+    }
+
+    // Prepare the data object for insertion, ensuring categoryId is properly included
+    const productData = {
+      name: newProduct.name.trim(),
+      description: newProduct.description.trim(),
+      price: newProduct.price,
+      categoryId: newProduct.categoryId.trim(),
+      available: newProduct.available !== undefined ? Boolean(newProduct.available) : true,
+      sizes: Array.isArray(newProduct.sizes) ? newProduct.sizes : [],
+      toppings: Array.isArray(newProduct.toppings) ? newProduct.toppings : [],
+    }
+
+    // Log the data being inserted
+    console.log("Inserting product data:", productData)
+
     // Insert the new product into the database
-    const { data, error } = await supabase.from("products").insert([newProduct]).select().single()
+    const { data, error } = await supabase.from("products").insert([productData]).select().single()
 
     // Handle database errors
     if (error) {
-      console.error("Database error creating product:", error)
+      console.error("Database error creating product:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+
       return NextResponse.json(
         {
           message: "Failed to create product",
           details: error.message,
           code: error.code,
+          hint: error.hint,
         },
         { status: 500 },
       )
     }
 
+    // Log successful creation
+    console.log("Product created successfully:", { id: data?.id, name: data?.name })
+
     // Return the newly created product
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
-    console.error("Unexpected error creating product:", error)
+    console.error("Unexpected error creating product:", {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    })
+
     return NextResponse.json(
       {
         message: "Internal server error",
-        details: error?.message || "Unknown error",
+        details: error?.message || "Unknown error occurred",
       },
       { status: 500 },
     )
