@@ -1,6 +1,25 @@
+import { createClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
 
-// Import the same mock data reference
+// Helper function to get Supabase client
+function getSupabaseClient() {
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Missing Supabase environment variables")
+      return null
+    }
+
+    return createClient(supabaseUrl, supabaseKey)
+  } catch (error) {
+    console.error("Error creating Supabase client:", error)
+    return null
+  }
+}
+
+// Fallback mock data for development/testing
 let mockProducts = [
   {
     id: "1",
@@ -96,7 +115,33 @@ let mockProducts = [
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const product = mockProducts.find((p) => p.id === params.id)
+    const supabase = getSupabaseClient()
+
+    if (!supabase) {
+      console.log("Supabase client not available, using fallback data")
+      const product = mockProducts.find((p) => p.id === params.id)
+
+      if (!product) {
+        return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+      }
+
+      return NextResponse.json(product)
+    }
+
+    console.log("Fetching product with ID:", params.id)
+    const { data: product, error } = await supabase.from("products").select("*").eq("id", params.id).single()
+
+    if (error) {
+      console.error("Supabase error fetching product:", error)
+      // Fallback to mock data
+      const fallbackProduct = mockProducts.find((p) => p.id === params.id)
+
+      if (!fallbackProduct) {
+        return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+      }
+
+      return NextResponse.json(fallbackProduct)
+    }
 
     if (!product) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
@@ -112,21 +157,51 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
-    const productIndex = mockProducts.findIndex((p) => p.id === params.id)
+    const supabase = getSupabaseClient()
 
-    if (productIndex === -1) {
-      return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+    if (!supabase) {
+      console.log("Supabase client not available, using fallback data")
+      const productIndex = mockProducts.findIndex((p) => p.id === params.id)
+
+      if (productIndex === -1) {
+        return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+      }
+
+      // Update the product with new data
+      mockProducts[productIndex] = {
+        ...mockProducts[productIndex],
+        ...body,
+        id: params.id, // Ensure ID doesn't change
+        price: Number(body.price) || mockProducts[productIndex].price,
+      }
+
+      return NextResponse.json(mockProducts[productIndex])
     }
 
-    // Update the product with new data
-    mockProducts[productIndex] = {
-      ...mockProducts[productIndex],
-      ...body,
-      id: params.id, // Ensure ID doesn't change
-      price: Number(body.price) || mockProducts[productIndex].price,
+    console.log("Updating product with ID:", params.id)
+    const { data: updatedProduct, error } = await supabase
+      .from("products")
+      .update({
+        ...body,
+        price: Number(body.price) || 0,
+      })
+      .eq("id", params.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Supabase error updating product:", error)
+      return NextResponse.json(
+        {
+          message: "Failed to update product",
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 },
+      )
     }
 
-    return NextResponse.json(mockProducts[productIndex])
+    return NextResponse.json(updatedProduct)
   } catch (error) {
     console.error("Error updating product:", error)
     return NextResponse.json({ error: "Erro ao atualizar produto" }, { status: 500 })
@@ -136,40 +211,99 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
-    const productIndex = mockProducts.findIndex((p) => p.id === params.id)
+    const supabase = getSupabaseClient()
 
-    if (productIndex === -1) {
-      return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+    if (!supabase) {
+      console.log("Supabase client not available, using fallback data")
+      const productIndex = mockProducts.findIndex((p) => p.id === params.id)
+
+      if (productIndex === -1) {
+        return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+      }
+
+      // Update only the provided fields
+      mockProducts[productIndex] = {
+        ...mockProducts[productIndex],
+        ...body,
+        id: params.id, // Ensure ID doesn't change
+      }
+
+      return NextResponse.json(mockProducts[productIndex])
     }
 
-    // Update only the provided fields
-    mockProducts[productIndex] = {
-      ...mockProducts[productIndex],
-      ...body,
-      id: params.id, // Ensure ID doesn't change
+    console.log("Patching product with ID:", params.id)
+    const { data: updatedProduct, error } = await supabase
+      .from("products")
+      .update(body)
+      .eq("id", params.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Supabase error patching product:", error)
+      return NextResponse.json(
+        {
+          message: "Failed to update product",
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 },
+      )
     }
 
-    return NextResponse.json(mockProducts[productIndex])
+    return NextResponse.json(updatedProduct)
   } catch (error) {
     console.error("Error updating product:", error)
     return NextResponse.json({ error: "Erro ao atualizar produto" }, { status: 500 })
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    const productIndex = mockProducts.findIndex((p) => p.id === params.id)
+    console.log("Attempting to delete product with ID:", params.id)
 
-    if (productIndex === -1) {
-      return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+    const supabase = getSupabaseClient()
+
+    if (!supabase) {
+      console.log("Supabase client not available, using fallback data")
+      const productIndex = mockProducts.findIndex((p) => p.id === params.id)
+
+      if (productIndex === -1) {
+        return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+      }
+
+      // Remove the product from the array
+      mockProducts = mockProducts.filter((p) => p.id !== params.id)
+      console.log("Product deleted from fallback data successfully")
+
+      return NextResponse.json({ message: "Product deleted successfully" })
     }
 
-    // Remove the product from the array
-    mockProducts = mockProducts.filter((p) => p.id !== params.id)
+    // Delete the product from Supabase
+    const { error } = await supabase.from("products").delete().match({ id: params.id })
 
-    return NextResponse.json({ message: "Produto excluído com sucesso" })
+    if (error) {
+      console.error("Supabase error deleting product:", error)
+      return NextResponse.json(
+        {
+          message: "Failed to delete product",
+          details: error.message,
+          code: error.code,
+        },
+        { status: 500 },
+      )
+    }
+
+    console.log("Product deleted from Supabase successfully")
+    return NextResponse.json({ message: "Product deleted successfully" })
   } catch (error) {
-    console.error("Error deleting product:", error)
-    return NextResponse.json({ error: "Erro ao excluir produto" }, { status: 500 })
+    console.error("Unexpected error deleting product:", error)
+    return NextResponse.json(
+      {
+        message: "Failed to delete product",
+        details: "An unexpected error occurred",
+      },
+      { status: 500 },
+    )
   }
 }
