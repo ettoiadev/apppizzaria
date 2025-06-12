@@ -154,9 +154,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    const body = await request.json()
+    console.log("Attempting to update product with ID:", params.id)
+
+    // Parse the incoming JSON body
+    const updatedData = await request.json()
+    console.log("Update data received:", updatedData)
+
     const supabase = getSupabaseClient()
 
     if (!supabase) {
@@ -170,22 +175,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       // Update the product with new data
       mockProducts[productIndex] = {
         ...mockProducts[productIndex],
-        ...body,
+        ...updatedData,
         id: params.id, // Ensure ID doesn't change
-        price: Number(body.price) || mockProducts[productIndex].price,
+        price: Number(updatedData.price) || mockProducts[productIndex].price,
       }
 
+      console.log("Product updated in fallback data successfully")
       return NextResponse.json(mockProducts[productIndex])
     }
 
-    console.log("Updating product with ID:", params.id)
-    const { data: updatedProduct, error } = await supabase
+    // Update the product in Supabase
+    const { data, error } = await supabase
       .from("products")
-      .update({
-        ...body,
-        price: Number(body.price) || 0,
-      })
-      .eq("id", params.id)
+      .update(updatedData)
+      .match({ id: params.id })
       .select()
       .single()
 
@@ -201,10 +204,21 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    return NextResponse.json(updatedProduct)
+    if (!data) {
+      return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+    }
+
+    console.log("Product updated in Supabase successfully")
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("Error updating product:", error)
-    return NextResponse.json({ error: "Erro ao atualizar produto" }, { status: 500 })
+    console.error("Unexpected error updating product:", error)
+    return NextResponse.json(
+      {
+        message: "Failed to update product",
+        details: "An unexpected error occurred",
+      },
+      { status: 500 },
+    )
   }
 }
 

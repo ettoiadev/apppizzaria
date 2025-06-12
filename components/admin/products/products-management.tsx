@@ -103,6 +103,7 @@ export function ProductsManagement() {
       const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products"
       const method = editingProduct ? "PUT" : "POST"
 
+      console.log("Sending this payload to the API:", productData)
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
