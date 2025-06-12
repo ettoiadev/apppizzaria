@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Upload, X } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
 import type { Product, Category, ProductSize, ProductTopping } from "@/types"
 
 interface ProductModalProps {
@@ -20,6 +21,9 @@ interface ProductModalProps {
   categories: Category[]
   onSave: (product: Partial<Product>) => void
 }
+
+// Create a Supabase client for file uploads
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export function ProductModal({ open, onOpenChange, product, categories, onSave }: ProductModalProps) {
   const [formData, setFormData] = useState({
@@ -36,6 +40,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
   const [uploadedImage, setUploadedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     if (product) {
@@ -74,6 +79,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
       const canvas = document.createElement("canvas")
       const ctx = canvas.getContext("2d")
       const img = new Image()
+      img.crossOrigin = "anonymous"
 
       img.onload = () => {
         // Set canvas size to target dimensions
@@ -96,7 +102,11 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              const processedFile = new File([blob], file.name, {
+              // Generate a unique filename with timestamp to avoid conflicts
+              const timestamp = new Date().getTime()
+              const fileName = `product_${timestamp}_${file.name.replace(/\s+/g, "_")}`
+
+              const processedFile = new File([blob], fileName, {
                 type: "image/jpeg",
                 lastModified: Date.now(),
               })
@@ -128,7 +138,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
       const previewUrl = URL.createObjectURL(processedFile)
       setImagePreview(previewUrl)
 
-      // Update form data with the processed image
+      // Update form data with the preview URL temporarily
       setFormData((prev) => ({ ...prev, image: previewUrl }))
     } catch (error) {
       console.error("Error processing image:", error)
@@ -143,18 +153,70 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     setFormData((prev) => ({ ...prev, image: "" }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Upload image to Supabase Storage
+  const uploadImageToStorage = async (file: File): Promise<string | null> => {
+    try {
+      setIsUploading(true)
+
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase.storage.from("product-images").upload(`public/${file.name}`, file, {
+        cacheControl: "3600",
+        upsert: true,
+      })
+
+      if (error) {
+        console.error("Error uploading image to Supabase Storage:", error)
+        return null
+      }
+
+      // Get the public URL of the uploaded file
+      const { data: publicUrlData } = supabase.storage.from("product-images").getPublicUrl(`public/${file.name}`)
+
+      return publicUrlData.publicUrl
+    } catch (error) {
+      console.error("Unexpected error during image upload:", error)
+      return null
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Create a copy of formData and remove image-related properties
+    // Create a copy of formData for submission
     const dataToSubmit = { ...formData }
 
-    // Remove image-related properties from the data that will be sent to the API
-    delete dataToSubmit.image
-    delete dataToSubmit.showImage
+    try {
+      // If there's a new uploaded image, upload it to Supabase Storage first
+      if (uploadedImage) {
+        setIsUploading(true)
+        const imageUrl = await uploadImageToStorage(uploadedImage)
 
-    // Call onSave with the cleaned data (without image properties)
-    onSave(dataToSubmit)
+        if (imageUrl) {
+          // Update the image URL in the data to submit
+          dataToSubmit.image = imageUrl
+        } else {
+          // If upload failed, keep the existing image URL if editing
+          if (product && product.image) {
+            dataToSubmit.image = product.image
+          } else {
+            // For new products, use a placeholder if upload failed
+            dataToSubmit.image = "/placeholder.svg"
+          }
+        }
+      } else if (product && product.image && !dataToSubmit.image) {
+        // If editing and no new image was uploaded, preserve the existing image
+        dataToSubmit.image = product.image
+      }
+
+      // Call onSave with the data including the image URL
+      onSave(dataToSubmit)
+    } catch (error) {
+      console.error("Error during form submission:", error)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const addSize = () => {
@@ -270,6 +332,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                 value={formData.image}
                 onChange={(e) => setFormData((prev) => ({ ...prev, image: e.target.value }))}
                 placeholder="https://exemplo.com/imagem.jpg"
+                disabled={!!uploadedImage}
               />
             </div>
 
@@ -423,7 +486,9 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">{product ? "Salvar Alterações" : "Criar Produto"}</Button>
+            <Button type="submit" disabled={isUploading}>
+              {isUploading ? "Enviando..." : product ? "Salvar Alterações" : "Criar Produto"}
+            </Button>
           </div>
         </form>
       </DialogContent>
