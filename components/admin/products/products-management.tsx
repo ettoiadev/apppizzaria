@@ -202,15 +202,21 @@ export function ProductsManagement() {
     if (!deletingItem) return
 
     try {
+      console.log("Attempting to delete item:", deletingItem)
+
       const endpoint = deletingItem.type === "product" ? "products" : "categories"
       const response = await fetch(`/api/${endpoint}/${deletingItem.id}`, {
         method: "DELETE",
       })
 
+      console.log("Delete response status:", response.status)
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || "Erro ao excluir item")
       }
+
+      console.log("Delete successful, refreshing data...")
 
       if (deletingItem.type === "product") {
         await loadProducts()
@@ -223,7 +229,7 @@ export function ProductsManagement() {
 
       setDeleteModalOpen(false)
       setDeletingItem(null)
-      // You could show a success toast notification here
+      console.log("UI updated after successful deletion")
     } catch (error) {
       console.error("Error deleting item:", error)
       // You could show an error toast notification here
