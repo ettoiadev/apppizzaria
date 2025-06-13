@@ -96,6 +96,30 @@ export function ProductsManagement() {
     setDeleteModalOpen(true)
   }
 
+  const handleSaveProduct = async (productData: Partial<Product>) => {
+    try {
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products"
+      const method = editingProduct ? "PUT" : "POST"
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Erro ao salvar produto")
+      }
+
+      await loadProducts()
+      setProductModalOpen(false)
+      setEditingProduct(null)
+    } catch (error) {
+      console.error("Error saving product:", error)
+    }
+  }
+
   const toggleProductAvailability = async (productId: string) => {
     try {
       const product = products.find((p) => p.id === productId)
