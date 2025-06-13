@@ -209,7 +209,31 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         dataToSubmit.image = product.image
       }
 
-      // Call onSave with the data including the image URL
+      // Format price values - convert comma decimal separators to periods
+      const formatPrice = (price: string | number): number => {
+        return Number.parseFloat(String(price).replace(",", "."))
+      }
+
+      // Format the main product price
+      dataToSubmit.price = formatPrice(dataToSubmit.price)
+
+      // Format prices in sizes array if they exist
+      if (dataToSubmit.sizes && dataToSubmit.sizes.length > 0) {
+        dataToSubmit.sizes = dataToSubmit.sizes.map((size) => ({
+          ...size,
+          price: formatPrice(size.price),
+        }))
+      }
+
+      // Format prices in toppings array if they exist
+      if (dataToSubmit.toppings && dataToSubmit.toppings.length > 0) {
+        dataToSubmit.toppings = dataToSubmit.toppings.map((topping) => ({
+          ...topping,
+          price: formatPrice(topping.price),
+        }))
+      }
+
+      // Call onSave with the data including the image URL and formatted prices
       onSave(dataToSubmit)
     } catch (error) {
       console.error("Error during form submission:", error)
@@ -295,11 +319,16 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                 <Label htmlFor="price">Preço Base (R$)</Label>
                 <Input
                   id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, price: Number.parseFloat(e.target.value) || 0 }))}
+                  type="text"
+                  inputMode="decimal"
+                  value={
+                    typeof formData.price === "number" ? formData.price.toString().replace(".", ",") : formData.price
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", ".")
+                    const numericValue = Number.parseFloat(value) || 0
+                    setFormData((prev) => ({ ...prev, price: numericValue }))
+                  }}
                   required
                 />
               </div>
@@ -418,11 +447,14 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                 <div className="flex-1">
                   <Label>Preço (R$)</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={size.price}
-                    onChange={(e) => updateSize(index, "price", Number.parseFloat(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={typeof size.price === "number" ? size.price.toString().replace(".", ",") : size.price}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(",", ".")
+                      const numericValue = Number.parseFloat(value) || 0
+                      updateSize(index, "price", numericValue)
+                    }}
                   />
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => removeSize(index)}>
@@ -455,11 +487,16 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                 <div className="flex-1">
                   <Label>Preço (R$)</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={topping.price}
-                    onChange={(e) => updateTopping(index, "price", Number.parseFloat(e.target.value) || 0)}
+                    type="text"
+                    inputMode="decimal"
+                    value={
+                      typeof topping.price === "number" ? topping.price.toString().replace(".", ",") : topping.price
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value.replace(",", ".")
+                      const numericValue = Number.parseFloat(value) || 0
+                      updateTopping(index, "price", numericValue)
+                    }}
                   />
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => removeTopping(index)}>
