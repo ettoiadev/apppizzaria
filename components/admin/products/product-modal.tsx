@@ -143,9 +143,75 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     setFormData((prev) => ({ ...prev, image: "" }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+
+    // Create a copy of formData for submission
+    const dataToSubmit = { ...formData }
+
+    try {
+      // Step 1: If a new file has been selected, upload it first
+      if (uploadedImage) {
+        const uploadFormData = new FormData()
+        uploadFormData.append("file", uploadedImage)
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadFormData,
+        })
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload image")
+        }
+
+        const uploadResult = await uploadResponse.json()
+        dataToSubmit.image = uploadResult.url
+      }
+
+      // Step 2: Format price values - convert comma decimal separators to periods
+      const formatPrice = (price: string | number): number => {
+        return Number.parseFloat(String(price).replace(",", "."))
+      }
+
+      // Format the main product price
+      dataToSubmit.price = formatPrice(dataToSubmit.price)
+
+      // Format prices in sizes array if they exist
+      if (dataToSubmit.sizes && dataToSubmit.sizes.length > 0) {
+        dataToSubmit.sizes = dataToSubmit.sizes.map((size) => ({
+          ...size,
+          price: formatPrice(size.price),
+        }))
+      }
+
+      // Format prices in toppings array if they exist
+      if (dataToSubmit.toppings && dataToSubmit.toppings.length > 0) {
+        dataToSubmit.toppings = dataToSubmit.toppings.map((topping) => ({
+          ...topping,
+          price: formatPrice(topping.price),
+        }))
+      }
+
+      // Step 3: Send the product data to the API
+      const productApiUrl = product ? `/api/products/${product.id}` : "/api/products"
+      const productApiMethod = product ? "PUT" : "POST"
+
+      const productResponse = await fetch(productApiUrl, {
+        method: productApiMethod,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSubmit),
+      })
+
+      if (!productResponse.ok) {
+        throw new Error("Failed to save product")
+      }
+
+      // Call the onSave callback with the submitted data
+      onSave(dataToSubmit)
+    } catch (error) {
+      console.error("Error during form submission:", error)
+      // You could add error state handling here if needed
+    }
   }
 
   const addSize = () => {
