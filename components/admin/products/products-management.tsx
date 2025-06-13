@@ -12,13 +12,14 @@ import { ProductModal } from "./product-modal"
 import { CategoryModal } from "./category-modal"
 import { DeleteConfirmModal } from "./delete-confirm-modal"
 import type { Product, Category } from "@/types"
+import { useProducts } from "@/hooks/use-products"
 
 export function ProductsManagement() {
-  const [products, setProducts] = useState<Product[]>([])
+  const { products, loading, error, loadProducts, refreshProducts } = useProducts()
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
-  const [loading, setLoading] = useState(true)
+  const [allProducts, setAllProducts] = useState<Product[]>([])
 
   // Modal states
   const [productModalOpen, setProductModalOpen] = useState(false)
@@ -32,28 +33,12 @@ export function ProductsManagement() {
 
   // Load data
   useEffect(() => {
-    loadProducts()
     loadCategories()
   }, [])
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch("/api/products")
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setProducts(data)
-    } catch (error) {
-      console.error("Error loading products:", error)
-      setProducts([]) // Set empty array on error
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    setAllProducts(products)
+  }, [products])
 
   const loadCategories = async () => {
     try {
@@ -126,7 +111,7 @@ export function ProductsManagement() {
       if (!product) return
 
       // Optimistically update the UI first
-      setProducts((prevProducts) =>
+      setAllProducts((prevProducts) =>
         prevProducts.map((p) => (p.id === productId ? { ...p, available: !p.available } : p)),
       )
 
@@ -139,7 +124,7 @@ export function ProductsManagement() {
 
       if (!response.ok) {
         // Revert the optimistic update if the API call failed
-        setProducts((prevProducts) =>
+        setAllProducts((prevProducts) =>
           prevProducts.map((p) => (p.id === productId ? { ...p, available: product.available } : p)),
         )
         console.error("Failed to update product availability")
@@ -149,7 +134,7 @@ export function ProductsManagement() {
       // Revert the optimistic update on error
       const originalProduct = products.find((p) => p.id === productId)
       if (originalProduct) {
-        setProducts((prevProducts) =>
+        setAllProducts((prevProducts) =>
           prevProducts.map((p) => (p.id === productId ? { ...p, available: originalProduct.available } : p)),
         )
       }
@@ -223,6 +208,11 @@ export function ProductsManagement() {
     }
   }
 
+  const handleRefreshProducts = async () => {
+    console.log("🔄 Refresh manual solicitado...")
+    await refreshProducts()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -240,6 +230,10 @@ export function ProductsManagement() {
           <p className="text-gray-600">Adicione, edite e gerencie seus produtos e categorias</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefreshProducts} disabled={loading}>
+            <Search className="w-4 h-4 mr-2" />
+            {loading ? "Atualizando..." : "Atualizar"}
+          </Button>
           <Button variant="outline" onClick={handleCreateCategory}>
             <Plus className="w-4 h-4 mr-2" />
             Nova Categoria
@@ -250,6 +244,14 @@ export function ProductsManagement() {
           </Button>
         </div>
       </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <p className="text-red-800">Erro ao carregar produtos: {error}</p>
+          <Button variant="outline" size="sm" onClick={refreshProducts} className="mt-2">
+            Tentar Novamente
+          </Button>
+        </div>
+      )}
       {/* Categories Management */}
       <Card>
         <CardHeader>

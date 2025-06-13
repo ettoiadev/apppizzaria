@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Upload, X } from "lucide-react"
 import type { Product, Category, ProductSize, ProductTopping } from "@/types"
+import { debugLog } from "@/lib/debug-utils"
 
 interface ProductModalProps {
   open: boolean
@@ -84,7 +85,10 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     let finalImageUrl = formData.image
 
     try {
+      debugLog.product.saving("Iniciando salvamento")
+
       if (selectedFile) {
+        console.log("📤 Fazendo upload da imagem...")
         const uploadFormData = new FormData()
         uploadFormData.append("file", selectedFile)
         const uploadResponse = await fetch("/api/upload", { method: "POST", body: uploadFormData })
@@ -95,6 +99,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         }
         const uploadResult = await uploadResponse.json()
         finalImageUrl = uploadResult.url
+        console.log("✅ Upload da imagem concluído:", finalImageUrl)
       }
 
       if (!formData.categoryId) {
@@ -104,6 +109,8 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
       const payload = { ...formData, image: finalImageUrl }
       const apiUrl = product?.id ? `/api/products/${product.id}` : "/api/products"
       const apiMethod = product?.id ? "PUT" : "POST"
+
+      debugLog.api.request(apiMethod, apiUrl, payload)
 
       const response = await fetch(apiUrl, {
         method: apiMethod,
@@ -116,9 +123,19 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         throw new Error(errorResult.message || "Falha ao salvar o produto.")
       }
 
+      const savedProduct = await response.json()
+      debugLog.product.success("Produto salvo", savedProduct)
+
+      // Aguardar a atualização da lista antes de fechar o modal
+      console.log("🔄 Atualizando lista de produtos...")
       await onSave()
+      debugLog.product.success("Lista atualizada")
+
+      // Fechar modal apenas após tudo estar concluído
       onOpenChange(false)
+      console.log("🎉 Modal fechado - processo concluído!")
     } catch (err: any) {
+      console.error("❌ Erro ao salvar produto:", err)
       setError(err.message)
     } finally {
       setIsSaving(false)

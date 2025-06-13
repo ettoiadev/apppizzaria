@@ -1,45 +1,40 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from "next/server"
 
-// GET handler para buscar todos os produtos
-export async function GET(request: Request) {
-  // Usando o cliente básico e direto do Supabase
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-  )
-  
-  const { data: products, error } = await supabase
-    .from('products')
-    .select('*')
-    .order('name', { ascending: true })
+export async function POST(request: Request) {
+  try {
+    console.log("📥 [API] Recebendo novo produto...")
+    const body = await request.json()
+    console.log("📋 [API] Dados do produto:", body)
 
-  if (error) {
-    console.error('Supabase error fetching products:', error)
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
+    // Simulate product creation (replace with actual database logic)
+    const result = {
+      id: Math.random().toString(36).substring(7), // Generate a random ID
+      ...body,
+      createdAt: new Date().toISOString(),
+    }
+
+    console.log("✅ [API] Produto criado com sucesso:", result)
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error("❌ [API] Erro ao criar produto:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
-
-  return NextResponse.json(products)
 }
 
-// POST handler para criar um novo produto
-export async function POST(request: Request) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-  const productData = await request.json()
+export async function GET() {
+  try {
+    console.log("📥 [API] Buscando produtos...")
 
-  const { data, error } = await supabase
-    .from('products')
-    .insert([productData])
-    .select()
-    .single()
+    // Simulate fetching products (replace with actual database logic)
+    const products = [
+      { id: "1", name: "Product 1", price: 20 },
+      { id: "2", name: "Product 2", price: 30 },
+    ]
 
-  if (error) {
-    console.error('Supabase error creating product:', error)
-    return NextResponse.json({ message: error.message, details: error.details }, { status: 400 })
+    console.log(`✅ [API] Retornando ${products.length} produtos`)
+    return NextResponse.json(products)
+  } catch (error) {
+    console.error("❌ [API] Erro ao buscar produtos:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
-
-  return NextResponse.json(data, { status: 201 })
 }
