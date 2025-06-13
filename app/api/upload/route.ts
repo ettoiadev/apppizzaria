@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     }
 
     // Validate file type
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/jpg"]
     if (!ALLOWED_TYPES.includes(fileBlob.type)) {
       return NextResponse.json(
         { error: "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed" },
