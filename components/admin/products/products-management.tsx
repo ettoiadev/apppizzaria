@@ -367,7 +367,7 @@ export function ProductsManagement() {
         onOpenChange={setProductModalOpen}
         product={editingProduct}
         categories={categories}
-        onSave={handleSaveProduct}
+        onSave={loadProducts}
       />
       <CategoryModal
         open={categoryModalOpen}
