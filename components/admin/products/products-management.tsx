@@ -49,7 +49,6 @@ export function ProductsManagement() {
       setProducts(data)
     } catch (error) {
       console.error("Error loading products:", error)
-      // You could show a toast notification here
       setProducts([]) // Set empty array on error
     } finally {
       setLoading(false)
@@ -68,7 +67,6 @@ export function ProductsManagement() {
       setCategories(data)
     } catch (error) {
       console.error("Error loading categories:", error)
-      // You could show a toast notification here
       setCategories([]) // Set empty array on error
     }
   }
@@ -103,7 +101,6 @@ export function ProductsManagement() {
       const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products"
       const method = editingProduct ? "PUT" : "POST"
 
-      console.log("Sending this payload to the API:", productData)
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -118,10 +115,8 @@ export function ProductsManagement() {
       await loadProducts()
       setProductModalOpen(false)
       setEditingProduct(null)
-      // You could show a success toast notification here
     } catch (error) {
       console.error("Error saving product:", error)
-      // You could show an error toast notification here
     }
   }
 
@@ -135,6 +130,7 @@ export function ProductsManagement() {
         prevProducts.map((p) => (p.id === productId ? { ...p, available: !p.available } : p)),
       )
 
+      // Send PATCH request to update availability
       const response = await fetch(`/api/products/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -147,7 +143,6 @@ export function ProductsManagement() {
           prevProducts.map((p) => (p.id === productId ? { ...p, available: product.available } : p)),
         )
         console.error("Failed to update product availability")
-        // You could show a toast notification here
       }
     } catch (error) {
       console.error("Error toggling product availability:", error)
@@ -158,7 +153,6 @@ export function ProductsManagement() {
           prevProducts.map((p) => (p.id === productId ? { ...p, available: originalProduct.available } : p)),
         )
       }
-      // You could show a toast notification here
     }
   }
 
@@ -203,21 +197,15 @@ export function ProductsManagement() {
     if (!deletingItem) return
 
     try {
-      console.log("Attempting to delete item:", deletingItem)
-
       const endpoint = deletingItem.type === "product" ? "products" : "categories"
       const response = await fetch(`/api/${endpoint}/${deletingItem.id}`, {
         method: "DELETE",
       })
 
-      console.log("Delete response status:", response.status)
-
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || "Erro ao excluir item")
       }
-
-      console.log("Delete successful, refreshing data...")
 
       if (deletingItem.type === "product") {
         await loadProducts()
@@ -230,10 +218,8 @@ export function ProductsManagement() {
 
       setDeleteModalOpen(false)
       setDeletingItem(null)
-      console.log("UI updated after successful deletion")
     } catch (error) {
       console.error("Error deleting item:", error)
-      // You could show an error toast notification here
     }
   }
 
@@ -253,7 +239,6 @@ export function ProductsManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Gerenciar Produtos</h1>
           <p className="text-gray-600">Adicione, edite e gerencie seus produtos e categorias</p>
         </div>
-
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleCreateCategory}>
             <Plus className="w-4 h-4 mr-2" />
@@ -265,7 +250,6 @@ export function ProductsManagement() {
           </Button>
         </div>
       </div>
-
       {/* Categories Management */}
       <Card>
         <CardHeader>
@@ -299,7 +283,6 @@ export function ProductsManagement() {
           </div>
         </CardContent>
       </Card>
-
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -325,7 +308,6 @@ export function ProductsManagement() {
           </SelectContent>
         </Select>
       </div>
-
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map((product) => (
@@ -350,9 +332,7 @@ export function ProductsManagement() {
                     {product.available ? "Disponível" : "Indisponível"}
                   </Badge>
                 </div>
-
                 <div className="text-xl font-bold text-primary">R$ {product.price.toFixed(2)}</div>
-
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -362,7 +342,6 @@ export function ProductsManagement() {
                     />
                     <span className="text-sm">Disponível</span>
                   </div>
-
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)}>
                       <Edit className="w-4 h-4" />
@@ -377,13 +356,11 @@ export function ProductsManagement() {
           </Card>
         ))}
       </div>
-
       {filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">Nenhum produto encontrado</p>
         </div>
       )}
-
       {/* Modals */}
       <ProductModal
         open={productModalOpen}
@@ -392,14 +369,12 @@ export function ProductsManagement() {
         categories={categories}
         onSave={handleSaveProduct}
       />
-
       <CategoryModal
         open={categoryModalOpen}
         onOpenChange={setCategoryModalOpen}
         category={editingCategory}
         onSave={handleSaveCategory}
       />
-
       <DeleteConfirmModal
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}
