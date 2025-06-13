@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createBrowserClient } from "@supabase/auth-helpers-nextjs" // <-- A CORREÇÃO PRINCIPAL ESTÁ AQUI
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,14 +12,8 @@ import { ProductModal } from "./product-modal"
 import { CategoryModal } from "./category-modal"
 import { DeleteConfirmModal } from "./delete-confirm-modal"
 import type { Product, Category } from "@/types"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
 export function ProductsManagement() {
-  // Use a lazy initializer with useState to create the client only on the browser.
-  const [supabase] = useState<SupabaseClient>(() =>
-    createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
-  )
-
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -132,10 +125,12 @@ export function ProductsManagement() {
       const product = products.find((p) => p.id === productId)
       if (!product) return
 
+      // Optimistically update the UI first
       setProducts((prevProducts) =>
         prevProducts.map((p) => (p.id === productId ? { ...p, available: !p.available } : p)),
       )
 
+      // Send PATCH request to update availability
       const response = await fetch(`/api/products/${productId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -143,6 +138,7 @@ export function ProductsManagement() {
       })
 
       if (!response.ok) {
+        // Revert the optimistic update if the API call failed
         setProducts((prevProducts) =>
           prevProducts.map((p) => (p.id === productId ? { ...p, available: product.available } : p)),
         )
@@ -150,6 +146,7 @@ export function ProductsManagement() {
       }
     } catch (error) {
       console.error("Error toggling product availability:", error)
+      // Revert the optimistic update on error
       const originalProduct = products.find((p) => p.id === productId)
       if (originalProduct) {
         setProducts((prevProducts) =>

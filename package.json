@@ -22,7 +22,7 @@
     "@radix-ui/react-switch": "latest",
     "@radix-ui/react-tabs": "latest",
     "@radix-ui/react-toast": "latest",
-    "@supabase/auth-helpers-nextjs": "latest",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "latest",
     "@tanstack/react-query": "latest",
     "class-variance-authority": "^0.7.1",
