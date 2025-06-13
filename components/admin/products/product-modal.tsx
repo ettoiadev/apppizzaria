@@ -1,432 +1,251 @@
+// Arquivo: /components/admin/products/product-modal.tsx
 "use client";
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Plus, Trash2, Upload, X } from "lucide-react"
-import type { Product, Category, ProductSize, ProductTopping } from "@/types"
+import type React from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, Upload, X } from "lucide-react";
+import type { Product, Category, ProductSize, ProductTopping } from "@/types";
 
 interface ProductModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  product: Product | null
-  categories: Category[]
-  onSave: (product: Partial<Product>) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  product: Partial<Product> | null;
+  categories: Category[];
+  onSave: () => Promise<void>;
 }
 
+const initialFormData = {
+  name: "",
+  description: "",
+  price: 0,
+  image: "",
+  categoryId: "",
+  available: true,
+  showImage: true,
+  sizes: [] as ProductSize[],
+  toppings: [] as ProductTopping[],
+};
+
 export function ProductModal({ open, onOpenChange, product, categories, onSave }: ProductModalProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    image: "",
-    categoryId: "",
-    available: true,
-    showImage: true,
-    sizes: [] as ProductSize[],
-    toppings: [] as ProductTopping[],
-  })
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string>("")
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [formData, setFormData] = useState<Partial<Product>>(initialFormData);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
+    if (product) {
+      setFormData({ ...initialFormData, ...product });
+      setImagePreview(product.image || "");
+    } else {
+      setFormData(initialFormData);
+      setImagePreview("");
+    }
+    setSelectedFile(null);
+    setError(null);
+    setIsSaving(false);
+  }, [product]);
 
   useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        image: product.image,
-        categoryId: product.categoryId,
-        available: product.available,
-        showImage: product.showImage ?? true,
-        sizes: product.sizes || [],
-        toppings: product.toppings || [],
-      })
-      setImagePreview(product.image)
-      setUploadedImage(null)
-    } else {
-      setFormData({
-        name: "",
-        description: "",
-        price: 0,
-        image: "",
-        categoryId: "",
-        available: true,
-        showImage: true,
-        sizes: [],
-        toppings: [],
-      })
-      setImagePreview("")
-      setUploadedImage(null)
-    }
-  }, [product, open])
+    if (open) resetForm();
+  }, [open, resetForm]);
+  
+  const handleFormChange = (field: keyof typeof formData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  const processImage = async (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      const img = new Image()
-
-      img.onload = () => {
-        // Set canvas size to target dimensions
-        canvas.width = 433
-        canvas.height = 433
-
-        // Calculate scaling and cropping
-        const scale = Math.max(433 / img.width, 433 / img.height)
-        const scaledWidth = img.width * scale
-        const scaledHeight = img.height * scale
-
-        // Calculate crop position (center crop)
-        const cropX = (scaledWidth - 433) / 2
-        const cropY = (scaledHeight - 433) / 2
-
-        // Draw the image
-        ctx?.drawImage(img, -cropX, -cropY, scaledWidth, scaledHeight)
-
-        // Convert to blob and then to File
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const processedFile = new File([blob], file.name, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              })
-              resolve(processedFile)
-            } else {
-              reject(new Error("Failed to process image"))
-            }
-          },
-          "image/jpeg",
-          0.9,
-        )
-      }
-
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
-    })
-  }
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setIsProcessing(true)
-    try {
-      const processedFile = await processImage(file)
-      setUploadedImage(processedFile)
-
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(processedFile)
-      setImagePreview(previewUrl)
-
-      // Update form data with the processed image
-      setFormData((prev) => ({ ...prev, image: previewUrl }))
-    } catch (error) {
-      console.error("Error processing image:", error)
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+  
   const removeImage = () => {
-    setUploadedImage(null)
-    setImagePreview("")
-    setFormData((prev) => ({ ...prev, image: "" }))
-  }
+    setSelectedFile(null);
+    setImagePreview("");
+    handleFormChange('image', '');
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setError(null);
 
-    // Create a copy of formData and remove image-related properties
-    const dataToSubmit = { ...formData }
+    let finalImageUrl = formData.image;
 
-    // Remove image-related properties from the data that will be sent to the API
-    delete dataToSubmit.image
-    delete dataToSubmit.showImage
+    try {
+      if (selectedFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', selectedFile);
+        const uploadResponse = await fetch('/api/upload', { method: 'POST', body: uploadFormData });
 
-    // Call onSave with the cleaned data (without image properties)
-    onSave(dataToSubmit)
-  }
+        if (!uploadResponse.ok) {
+          const errData = await uploadResponse.json();
+          throw new Error(errData.message || 'Falha no upload da imagem.');
+        }
+        const uploadResult = await uploadResponse.json();
+        finalImageUrl = uploadResult.url;
+      }
+      
+      if (!formData.categoryId) throw new Error('Por favor, selecione uma categoria.');
 
-  const addSize = () => {
-    setFormData((prev) => ({
-      ...prev,
-      sizes: [...prev.sizes, { name: "", price: 0 }],
-    }))
-  }
+      const payload = { ...formData, image: finalImageUrl };
+      const apiUrl = product?.id ? `/api/products/${product.id}` : '/api/products';
+      const apiMethod = product?.id ? 'PUT' : 'POST';
 
-  const updateSize = (index: number, field: keyof ProductSize, value: string | number) => {
-    setFormData((prev) => ({
-      ...prev,
-      sizes: prev.sizes.map((size, i) => (i === index ? { ...size, [field]: value } : size)),
-    }))
-  }
+      const response = await fetch(apiUrl, {
+        method: apiMethod,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-  const removeSize = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      sizes: prev.sizes.filter((_, i) => i !== index),
-    }))
-  }
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.message || 'Falha ao salvar o produto.');
+      }
+      
+      await onSave();
+      onOpenChange(false);
 
-  const addTopping = () => {
-    setFormData((prev) => ({
-      ...prev,
-      toppings: [...prev.toppings, { name: "", price: 0 }],
-    }))
-  }
-
-  const updateTopping = (index: number, field: keyof ProductTopping, value: string | number) => {
-    setFormData((prev) => ({
-      ...prev,
-      toppings: prev.toppings.map((topping, i) => (i === index ? { ...topping, [field]: value } : topping)),
-    }))
-  }
-
-  const removeTopping = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      toppings: prev.toppings.filter((_, i) => i !== index),
-    }))
-  }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  // Funções para gerenciar listas dinâmicas (Tamanhos e Adicionais)
+  const addDynamicListItem = (listName: 'sizes' | 'toppings') => {
+    handleFormChange(listName, [...(formData[listName] || []), { name: "", price: 0 }]);
+  };
+  const updateDynamicListItem = (listName: 'sizes' | 'toppings', index: number, field: string, value: string | number) => {
+    const list = (formData[listName] || []).map((item, i) => i === index ? { ...item, [field]: value } : item);
+    handleFormChange(listName, list);
+  };
+  const removeDynamicListItem = (listName: 'sizes' | 'toppings', index: number) => {
+    const list = (formData[listName] || []).filter((_, i) => i !== index);
+    handleFormChange(listName, list);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{product ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+          <DialogTitle>{product ? "Editar Produto" : "Novo Produto"}</DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
+        <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto pr-6 space-y-6">
+          {/* Informações Básicas */}
           <div className="space-y-4">
+            <h3 className="font-medium text-lg">Informações Básicas</h3>
             <div>
               <Label htmlFor="name">Nome do Produto</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                required
-              />
+              <Input id="name" value={formData.name} onChange={(e) => handleFormChange('name', e.target.value)} required />
             </div>
-
             <div>
               <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                required
-              />
+              <Textarea id="description" value={formData.description} onChange={(e) => handleFormChange('description', e.target.value)} />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price">Preço Base (R$)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, price: Number.parseFloat(e.target.value) || 0 }))}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="category">Categoria</Label>
-                <Select
-                  value={formData.categoryId}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, categoryId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="image">URL da Imagem</Label>
-              <Input
-                id="image"
-                value={formData.image}
-                onChange={(e) => setFormData((prev) => ({ ...prev, image: e.target.value }))}
-                placeholder="https://exemplo.com/imagem.jpg"
-              />
-            </div>
-
-            <div>
-              <Label>Upload de Imagem</Label>
-              <div className="space-y-2">
-                {imagePreview ? (
-                  <div className="relative inline-block">
-                    <img
-                      src={imagePreview || "/placeholder.svg"}
-                      alt="Preview"
-                      className="w-24 h-24 object-cover rounded border"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Upload className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">Nenhuma imagem selecionada</p>
-                  </div>
-                )}
-
-                <div>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="product-image-upload"
-                    disabled={isProcessing}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById("product-image-upload")?.click()}
-                    disabled={isProcessing}
-                    className="w-full"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {isProcessing ? "Processando..." : imagePreview ? "Alterar Imagem" : "Fazer Upload"}
-                  </Button>
-                </div>
-
-                <p className="text-xs text-gray-500">
-                  Tamanho recomendado: 433x433 pixels
-                  <br />
-                  Imagens serão redimensionadas automaticamente
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={formData.available}
-                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, available: checked }))}
-              />
-              <Label>Produto disponível</Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={formData.showImage}
-                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, showImage: checked }))}
-              />
-              <Label>Exibir imagem do produto</Label>
-            </div>
+             <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <Label htmlFor="price">Preço Base (R$)</Label>
+                 <Input id="price" type="number" step="0.01" min="0" value={formData.price} onChange={(e) => handleFormChange('price', parseFloat(e.target.value) || 0)} required />
+               </div>
+               <div>
+                 <Label htmlFor="category">Categoria</Label>
+                 <Select value={formData.categoryId} onValueChange={(value) => handleFormChange('categoryId', value)} required>
+                   <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                   <SelectContent>
+                     {categories.map((category) => (
+                       <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+             </div>
           </div>
-
-          {/* Sizes */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Tamanhos (Opcional)</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addSize}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Tamanho
-              </Button>
-            </div>
-
-            {formData.sizes.map((size, index) => (
-              <div key={index} className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <Label>Nome do Tamanho</Label>
-                  <Input
-                    value={size.name}
-                    onChange={(e) => updateSize(index, "name", e.target.value)}
-                    placeholder="Ex: Pequena, Média, Grande"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label>Preço (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={size.price}
-                    onChange={(e) => updateSize(index, "price", Number.parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => removeSize(index)}>
-                  <Trash2 className="w-4 h-4" />
+          {/* Imagem */}
+          <div className="space-y-2">
+            <Label>Imagem do Produto</Label>
+            {imagePreview ? (
+              <div className="relative w-24 h-24">
+                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded border" />
+                <Button type="button" size="icon" variant="destructive" onClick={removeImage} className="absolute -top-2 -right-2 w-6 h-6 rounded-full">
+                  <X className="w-4 h-4" />
                 </Button>
               </div>
-            ))}
-          </div>
-
-          {/* Toppings */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Adicionais (Opcional)</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addTopping}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Adicional
-              </Button>
-            </div>
-
-            {formData.toppings.map((topping, index) => (
-              <div key={index} className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <Label>Nome do Adicional</Label>
-                  <Input
-                    value={topping.name}
-                    onChange={(e) => updateTopping(index, "name", e.target.value)}
-                    placeholder="Ex: Queijo Extra, Azeitona"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label>Preço (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={topping.price}
-                    onChange={(e) => updateTopping(index, "price", Number.parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => removeTopping(index)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+            ) : (
+              <div className="border-2 border-dashed rounded-lg p-6 text-center text-gray-500">
+                <Upload className="w-12 h-12 mx-auto mb-2" />
+                <p>Nenhuma imagem</p>
               </div>
-            ))}
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+            )}
+            <Input type="file" accept="image/*" onChange={handleFileChange} className="hidden" id="product-image-upload" disabled={isSaving} />
+            <Button type="button" variant="outline" onClick={() => document.getElementById("product-image-upload")?.click()} disabled={isSaving} className="w-full">
+              <Upload className="w-4 h-4 mr-2" />{isSaving ? "Enviando..." : "Escolher Arquivo"}
             </Button>
-            <Button type="submit">{product ? "Salvar Alterações" : "Criar Produto"}</Button>
+          </div>
+          {/* Opções */}
+          <div className="space-y-2">
+             <div className="flex items-center space-x-2">
+               <Switch id="available" checked={formData.available} onCheckedChange={(checked) => handleFormChange('available', checked)} />
+               <Label htmlFor="available">Produto disponível</Label>
+             </div>
+             <div className="flex items-center space-x-2">
+               <Switch id="showImage" checked={formData.showImage} onCheckedChange={(checked) => handleFormChange('showImage', checked)} />
+               <Label htmlFor="showImage">Exibir imagem do produto</Label>
+             </div>
+           </div>
+
+          {/* Tamanhos */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-medium">Tamanhos (Opcional)</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => addDynamicListItem('sizes')}>
+                <Plus className="w-4 h-4 mr-2" />Adicionar
+              </Button>
+            </div>
+            {formData.sizes?.map((size, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                <div className="flex-1"><Label>Nome</Label><Input value={size.name} onChange={(e) => updateDynamicListItem('sizes', index, "name", e.target.value)} /></div>
+                <div className="w-28"><Label>Preço (R$)</Label><Input type="number" step="0.01" min="0" value={size.price} onChange={(e) => updateDynamicListItem('sizes', index, "price", Number(e.target.value))} /></div>
+                <Button type="button" variant="destructive-outline" size="icon" onClick={() => removeDynamicListItem('sizes', index)}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Adicionais */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-medium">Adicionais (Opcional)</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => addDynamicListItem('toppings')}>
+                <Plus className="w-4 h-4 mr-2" />Adicionar
+              </Button>
+            </div>
+            {formData.toppings?.map((topping, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                 <div className="flex-1"><Label>Nome</Label><Input value={topping.name} onChange={(e) => updateDynamicListItem('toppings', index, "name", e.target.value)} /></div>
+                <div className="w-28"><Label>Preço (R$)</Label><Input type="number" step="0.01" min="0" value={topping.price} onChange={(e) => updateDynamicListItem('toppings', index, "price", Number(e.target.value))} /></div>
+                <Button type="button" variant="destructive-outline" size="icon" onClick={() => removeDynamicListItem('toppings', index)}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+            ))}
           </div>
         </form>
+        <DialogFooter className="pt-4">
+          {error && <p className="text-sm font-medium text-destructive mr-auto">{error}</p>}
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="submit" form="product-form" disabled={isSaving}>
+            {isSaving ? 'Salvando...' : product ? "Salvar Alterações" : "Criar Produto"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
