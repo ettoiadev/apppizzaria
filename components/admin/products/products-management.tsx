@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useQueryClient } from '@tanstack/react-query' // ADICIONAR ESTA IMPORTAÇÃO
+import { useQueryClient } from "@tanstack/react-query" // ADICIONAR ESTA IMPORTAÇÃO
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +16,7 @@ import type { Product, Category } from "@/types"
 
 export function ProductsManagement() {
   const queryClient = useQueryClient() // ADICIONAR ESTA LINHA
-  
+
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -102,32 +102,29 @@ export function ProductsManagement() {
 
       if (response.ok) {
         const savedProduct = await response.json()
-        
+
         // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL
         if (editingProduct) {
           // Editando produto existente
-          setProducts(prevProducts => 
-            prevProducts.map(p => 
-              p.id === editingProduct.id ? { ...p, ...savedProduct } : p
-            )
+          setProducts((prevProducts) =>
+            prevProducts.map((p) => (p.id === editingProduct.id ? { ...p, ...savedProduct } : p)),
           )
         } else {
           // Criando novo produto
-          setProducts(prevProducts => [...prevProducts, savedProduct])
+          setProducts((prevProducts) => [...prevProducts, savedProduct])
         }
 
         // INVALIDAR CACHE DO REACT QUERY (se estiver usando)
-        await queryClient.invalidateQueries({ queryKey: ['products'] })
-        await queryClient.invalidateQueries({ queryKey: ['categories'] })
-        
+        await queryClient.invalidateQueries({ queryKey: ["products"] })
+        await queryClient.invalidateQueries({ queryKey: ["categories"] })
+
         // Fechar modal
         setProductModalOpen(false)
-        
+
         // Opcional: Mostrar toast de sucesso
         // toast.success(editingProduct ? 'Produto atualizado!' : 'Produto criado!')
-        
       } else {
-        throw new Error('Falha ao salvar produto')
+        throw new Error("Falha ao salvar produto")
       }
     } catch (error) {
       console.error("Error saving product:", error)
@@ -143,26 +140,29 @@ export function ProductsManagement() {
       const product = products.find((p) => p.id === productId)
       if (!product) return
 
+      console.log(`Alterando disponibilidade do produto ${product.name}: ${product.available} -> ${!product.available}`)
+
       // Optimistically update the UI first
       setProducts((prevProducts) =>
         prevProducts.map((p) => (p.id === productId ? { ...p, available: !p.available } : p)),
       )
 
       const response = await fetch(`/api/products/${productId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...product, available: !product.available }),
+        body: JSON.stringify({ available: !product.available }),
       })
 
       if (!response.ok) {
+        console.error("Failed to update product availability")
         // Revert the optimistic update if the API call failed
         setProducts((prevProducts) =>
           prevProducts.map((p) => (p.id === productId ? { ...p, available: product.available } : p)),
         )
-        console.error("Failed to update product availability")
       } else {
+        console.log(`Disponibilidade do produto ${product.name} atualizada com sucesso`)
         // INVALIDAR CACHE APÓS ATUALIZAÇÃO BEM-SUCEDIDA
-        await queryClient.invalidateQueries({ queryKey: ['products'] })
+        await queryClient.invalidateQueries({ queryKey: ["products"] })
       }
     } catch (error) {
       console.error("Error toggling product availability:", error)
@@ -206,22 +206,20 @@ export function ProductsManagement() {
 
       if (response.ok) {
         const savedCategory = await response.json()
-        
+
         // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL
         if (editingCategory) {
-          setCategories(prevCategories =>
-            prevCategories.map(c =>
-              c.id === editingCategory.id ? { ...c, ...savedCategory } : c
-            )
+          setCategories((prevCategories) =>
+            prevCategories.map((c) => (c.id === editingCategory.id ? { ...c, ...savedCategory } : c)),
           )
         } else {
-          setCategories(prevCategories => [...prevCategories, savedCategory])
+          setCategories((prevCategories) => [...prevCategories, savedCategory])
         }
 
         // INVALIDAR CACHE DO REACT QUERY
-        await queryClient.invalidateQueries({ queryKey: ['categories'] })
-        await queryClient.invalidateQueries({ queryKey: ['products'] })
-        
+        await queryClient.invalidateQueries({ queryKey: ["categories"] })
+        await queryClient.invalidateQueries({ queryKey: ["products"] })
+
         setCategoryModalOpen(false)
       }
     } catch (error) {
@@ -239,31 +237,37 @@ export function ProductsManagement() {
         method: "DELETE",
       })
 
-      if (response.ok) {
-        // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL
-        if (deletingItem.type === "product") {
-          setProducts(prevProducts => 
-            prevProducts.filter(p => p.id !== deletingItem.id)
-          )
-        } else {
-          setCategories(prevCategories =>
-            prevCategories.filter(c => c.id !== deletingItem.id)
-          )
-          if (selectedCategory === deletingItem.id) {
-            setSelectedCategory("all")
-          }
-        }
-
-        // INVALIDAR CACHE DO REACT QUERY
-        await queryClient.invalidateQueries({ 
-          queryKey: [deletingItem.type === "product" ? 'products' : 'categories'] 
-        })
-        
-        setDeleteModalOpen(false)
-        setDeletingItem(null)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Erro ao excluir item")
       }
+
+      // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL - CORRIGIDA
+      if (deletingItem.type === "product") {
+        setProducts((prevProducts) => prevProducts.filter((p) => p.id !== deletingItem.id))
+        console.log(`Produto ${deletingItem.name} removido da lista local`)
+      } else {
+        setCategories((prevCategories) => prevCategories.filter((c) => c.id !== deletingItem.id))
+        if (selectedCategory === deletingItem.id) {
+          setSelectedCategory("all")
+        }
+        console.log(`Categoria ${deletingItem.name} removida da lista local`)
+      }
+
+      // INVALIDAR CACHE DO REACT QUERY
+      await queryClient.invalidateQueries({
+        queryKey: [deletingItem.type === "product" ? "products" : "categories"],
+      })
+
+      // Fechar modal e limpar estado
+      setDeleteModalOpen(false)
+      setDeletingItem(null)
+
+      console.log(`${deletingItem.type === "product" ? "Produto" : "Categoria"} excluído com sucesso`)
     } catch (error) {
       console.error("Error deleting item:", error)
+      // Opcional: Mostrar toast de erro
+      // toast.error(`Erro ao excluir ${deletingItem.type === "product" ? "produto" : "categoria"}`)
     }
   }
 
