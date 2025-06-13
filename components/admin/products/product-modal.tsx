@@ -37,6 +37,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
   const [imagePreview, setImagePreview] = useState<string>("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (product) {
@@ -68,79 +69,32 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
       setImagePreview("")
       setUploadedImage(null)
     }
+    setError(null)
   }, [product, open])
 
-  const processImage = async (file: File): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      const img = new Image()
-      img.crossOrigin = "anonymous"
-
-      img.onload = () => {
-        // Set canvas size to target dimensions
-        canvas.width = 433
-        canvas.height = 433
-
-        // Calculate scaling and cropping
-        const scale = Math.max(433 / img.width, 433 / img.height)
-        const scaledWidth = img.width * scale
-        const scaledHeight = img.height * scale
-
-        // Calculate crop position (center crop)
-        const cropX = (scaledWidth - 433) / 2
-        const cropY = (scaledHeight - 433) / 2
-
-        // Draw the image
-        ctx?.drawImage(img, -cropX, -cropY, scaledWidth, scaledHeight)
-
-        // Convert to blob and then to File
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              // Generate a unique filename with timestamp to avoid conflicts
-              const timestamp = new Date().getTime()
-              const fileName = `product_${timestamp}_${file.name.replace(/\s+/g, "_")}`
-
-              const processedFile = new File([blob], fileName, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              })
-              resolve(processedFile)
-            } else {
-              reject(new Error("Failed to process image"))
-            }
-          },
-          "image/jpeg",
-          0.9,
-        )
-      }
-
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
-    })
+  // Handle price input change - allow comma as decimal separator
+  const handlePriceChange = (value: string): number => {
+    // Replace comma with period for internal storage
+    const sanitizedValue = value.replace(",", ".")
+    return Number.parseFloat(sanitizedValue) || 0
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Format price for display - show with comma as decimal separator
+  const formatPriceForDisplay = (price: number | string): string => {
+    if (typeof price === "string") {
+      return price
+    }
+    return price.toString().replace(".", ",")
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setIsProcessing(true)
-    try {
-      const processedFile = await processImage(file)
-      setUploadedImage(processedFile)
-
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(processedFile)
-      setImagePreview(previewUrl)
-
-      // Update form data with the preview URL temporarily
-      setFormData((prev) => ({ ...prev, image: previewUrl }))
-    } catch (error) {
-      console.error("Error processing image:", error)
-    } finally {
-      setIsProcessing(false)
-    }
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file)
+    setImagePreview(previewUrl)
+    setUploadedImage(file)
   }
 
   const removeImage = () => {
@@ -153,10 +107,13 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
   const uploadImageToServer = async (file: File): Promise<string | null> => {
     try {
       setIsUploading(true)
+      setError(null)
 
       // Create form data for the file upload
       const formData = new FormData()
       formData.append("file", file)
+
+      console.log("Uploading file:", file.name, file.type, file.size)
 
       // Send the file to our upload API
       const response = await fetch("/api/upload", {
@@ -174,6 +131,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
       return data.url
     } catch (error) {
       console.error("Error uploading image:", error)
+      setError(error instanceof Error ? error.message : "Failed to upload image")
       return null
     } finally {
       setIsUploading(false)
@@ -182,14 +140,16 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Create a copy of formData for submission
-    const dataToSubmit = { ...formData }
+    setError(null)
 
     try {
-      // If there's a new uploaded image, upload it to our API first
+      setIsUploading(true)
+
+      // Create a copy of formData for submission
+      const dataToSubmit = { ...formData }
+
+      // Step 1: Handle image upload if a new file is selected
       if (uploadedImage) {
-        setIsUploading(true)
         const imageUrl = await uploadImageToServer(uploadedImage)
 
         if (imageUrl) {
@@ -209,7 +169,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         dataToSubmit.image = product.image
       }
 
-      // Format price values - convert comma decimal separators to periods
+      // Step 2: Format price values - convert comma decimal separators to periods
       const formatPrice = (price: string | number): number => {
         return Number.parseFloat(String(price).replace(",", "."))
       }
@@ -233,10 +193,11 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         }))
       }
 
-      // Call onSave with the data including the image URL and formatted prices
+      // Step 3: Call onSave with the data including the image URL and formatted prices
       onSave(dataToSubmit)
     } catch (error) {
       console.error("Error during form submission:", error)
+      setError(error instanceof Error ? error.message : "Failed to save product")
     } finally {
       setIsUploading(false)
     }
@@ -292,6 +253,8 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
           {/* Basic Information */}
           <div className="space-y-4">
             <div>
@@ -321,12 +284,9 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                   id="price"
                   type="text"
                   inputMode="decimal"
-                  value={
-                    typeof formData.price === "number" ? formData.price.toString().replace(".", ",") : formData.price
-                  }
+                  value={formatPriceForDisplay(formData.price)}
                   onChange={(e) => {
-                    const value = e.target.value.replace(",", ".")
-                    const numericValue = Number.parseFloat(value) || 0
+                    const numericValue = handlePriceChange(e.target.value)
                     setFormData((prev) => ({ ...prev, price: numericValue }))
                   }}
                   required
@@ -381,28 +341,26 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                 <div>
                   <input
                     type="file"
-                    accept=".jpg,.jpeg,.png,.webp"
+                    accept=".jpg,.jpeg,.png,.webp,.gif,.avif"
                     onChange={handleImageUpload}
                     className="hidden"
                     id="product-image-upload"
-                    disabled={isProcessing}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => document.getElementById("product-image-upload")?.click()}
-                    disabled={isProcessing}
                     className="w-full"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    {isProcessing ? "Processando..." : imagePreview ? "Alterar Imagem" : "Fazer Upload"}
+                    {imagePreview ? "Alterar Imagem" : "Fazer Upload"}
                   </Button>
                 </div>
 
                 <p className="text-xs text-gray-500">
-                  Tamanho recomendado: 433x433 pixels
+                  Formatos aceitos: JPG, PNG, WebP, GIF, AVIF
                   <br />
-                  Imagens serão redimensionadas automaticamente
+                  Tamanho máximo: 5MB
                 </p>
               </div>
             </div>
@@ -449,10 +407,9 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                   <Input
                     type="text"
                     inputMode="decimal"
-                    value={typeof size.price === "number" ? size.price.toString().replace(".", ",") : size.price}
+                    value={formatPriceForDisplay(size.price)}
                     onChange={(e) => {
-                      const value = e.target.value.replace(",", ".")
-                      const numericValue = Number.parseFloat(value) || 0
+                      const numericValue = handlePriceChange(e.target.value)
                       updateSize(index, "price", numericValue)
                     }}
                   />
@@ -489,12 +446,9 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                   <Input
                     type="text"
                     inputMode="decimal"
-                    value={
-                      typeof topping.price === "number" ? topping.price.toString().replace(".", ",") : topping.price
-                    }
+                    value={formatPriceForDisplay(topping.price)}
                     onChange={(e) => {
-                      const value = e.target.value.replace(",", ".")
-                      const numericValue = Number.parseFloat(value) || 0
+                      const numericValue = handlePriceChange(e.target.value)
                       updateTopping(index, "price", numericValue)
                     }}
                   />
