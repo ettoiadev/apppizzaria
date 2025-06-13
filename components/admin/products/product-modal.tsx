@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Upload, X } from "lucide-react"
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase/client"
 import type { Product, Category, ProductSize, ProductTopping } from "@/types"
 
 interface ProductModalProps {
@@ -21,9 +21,6 @@ interface ProductModalProps {
   categories: Category[]
   onSave: (product: Partial<Product>) => void
 }
-
-// Create a Supabase client for file uploads
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export function ProductModal({ open, onOpenChange, product, categories, onSave }: ProductModalProps) {
   const [formData, setFormData] = useState({
