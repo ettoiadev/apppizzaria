@@ -12,8 +12,14 @@ import { ProductModal } from "./product-modal"
 import { CategoryModal } from "./category-modal"
 import { DeleteConfirmModal } from "./delete-confirm-modal"
 import type { Product, Category } from "@/types"
+import { createBrowserClient } from "@supabase/auth-helpers-nextjs"
 
 export function ProductsManagement() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -391,6 +397,7 @@ export function ProductsManagement() {
         product={editingProduct}
         categories={categories}
         onSave={handleSaveProduct}
+        supabase={supabase}
       />
 
       <CategoryModal
