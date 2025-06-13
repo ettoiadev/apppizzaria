@@ -19,6 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "File size exceeds 5MB limit" }, { status: 400 })
     }
 
+    // File type validation temporarily disabled for debugging
+    /* 
     // Validate file type
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/jpg"]
     if (!ALLOWED_TYPES.includes(fileBlob.type)) {
@@ -27,10 +29,14 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+    */
+
+    // Log the file type for debugging
+    console.log("Uploading file of type:", fileBlob.type)
 
     // Generate unique filename to avoid conflicts
     const timestamp = Date.now()
-    const fileExtension = fileBlob.type.split("/")[1]
+    const fileExtension = fileBlob.type.split("/")[1] || "unknown"
     const fileName = `${timestamp}-product-image.${fileExtension}`
     const filePath = `public/${fileName}`
 

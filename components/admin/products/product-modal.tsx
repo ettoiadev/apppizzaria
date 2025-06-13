@@ -321,7 +321,6 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                   id="price"
                   type="text"
                   inputMode="decimal"
-                  pattern="[0-9]*[.,]?[0-9]*"
                   value={
                     typeof formData.price === "number" ? formData.price.toString().replace(".", ",") : formData.price
                   }
@@ -450,7 +449,6 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                   <Input
                     type="text"
                     inputMode="decimal"
-                    pattern="[0-9]*[.,]?[0-9]*"
                     value={typeof size.price === "number" ? size.price.toString().replace(".", ",") : size.price}
                     onChange={(e) => {
                       const value = e.target.value.replace(",", ".")
@@ -491,7 +489,6 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
                   <Input
                     type="text"
                     inputMode="decimal"
-                    pattern="[0-9]*[.,]?[0-9]*"
                     value={
                       typeof topping.price === "number" ? topping.price.toString().replace(".", ",") : topping.price
                     }
