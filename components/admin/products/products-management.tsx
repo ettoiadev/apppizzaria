@@ -22,6 +22,7 @@ export function ProductsManagement() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false) // ADICIONAR ESTADO DE LOADING
 
   // Modal states
@@ -41,16 +42,22 @@ export function ProductsManagement() {
   }, [])
 
   const loadProducts = async () => {
+    setLoading(true);
+    setLoadError(null); // Reset error before loading
     try {
-      const response = await fetch("/api/products")
-      const data = await response.json()
-      setProducts(data)
+      const response = await fetch("/api/products");
+      if (!response.ok) { // Check for non-successful responses
+        throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+      setProducts(data);
     } catch (error) {
-      console.error("Error loading products:", error)
+      console.error("Error loading products:", error);
+      setLoadError("Falha ao carregar produtos. Tente novamente mais tarde."); // Set user-friendly error message
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadCategories = async () => {
     try {
@@ -240,19 +247,25 @@ export function ProductsManagement() {
         method: "DELETE",
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        // ATUALIZA A LISTA NA TELA IMEDIATAMENTE APÓS O SUCESSO
+        if (deletingItem.type === "product") {
+            setProducts((prevProducts) => prevProducts.filter((p) => p.id !== idToDelete));
+            await queryClient.invalidateQueries({ queryKey: ["products"] }); // Invalidate cache
+            await loadProducts(); // Refetch products
+        } else { // Assuming deletingItem.type === "category"
+            setCategories((prevCategories) => prevCategories.filter((c) => c.id !== idToDelete));
+            if (selectedCategory === idToDelete) {
+                setSelectedCategory("all");
+            }
+            await queryClient.invalidateQueries({ queryKey: ["categories"] });
+            // Optionally, refetch products if category changes can affect them
+            // await loadProducts();
+        }
+        // toast.success("Item excluído com sucesso!"); // Example success message
+      } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Erro ao excluir item");
-      }
-
-      // ATUALIZA A LISTA NA TELA IMEDIATAMENTE APÓS O SUCESSO
-      if (deletingItem.type === "product") {
-        setProducts((prevProducts) => prevProducts.filter((p) => p.id !== idToDelete));
-      } else {
-        setCategories((prevCategories) => prevCategories.filter((c) => c.id !== idToDelete));
-        if (selectedCategory === idToDelete) {
-          setSelectedCategory("all");
-        }
       }
     } catch (error) {
       console.error("Error deleting item:", error);
@@ -353,6 +366,11 @@ export function ProductsManagement() {
       </div>
 
       {/* Products Grid */}
+      {loadError && (
+        <div className="text-center py-12 text-red-600">
+          <p>{loadError}</p>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map((product) => (
           <Card key={product.id}>
@@ -404,7 +422,7 @@ export function ProductsManagement() {
         ))}
       </div>
 
-      {filteredProducts.length === 0 && (
+      {!loading && !loadError && filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">Nenhum produto encontrado</p>
         </div>
