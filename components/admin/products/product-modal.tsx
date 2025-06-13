@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Upload, X } from "lucide-react"
-import { createBrowserClient } from "@supabase/auth-helpers-nextjs"
 import type { Product, Category, ProductSize, ProductTopping } from "@/types"
 
 interface ProductModalProps {
@@ -23,11 +22,6 @@ interface ProductModalProps {
 }
 
 export function ProductModal({ open, onOpenChange, product, categories, onSave }: ProductModalProps) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -155,34 +149,31 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     setFormData((prev) => ({ ...prev, image: "" }))
   }
 
-  // Upload image to Supabase Storage
-  const uploadImageToStorage = async (file: File): Promise<string | null> => {
+  // Upload image to our backend API
+  const uploadImageToServer = async (file: File): Promise<string | null> => {
     try {
       setIsUploading(true)
 
-      // Debug: Check current Supabase session before upload
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      console.log("Current Supabase session before upload:", session)
+      // Create form data for the file upload
+      const formData = new FormData()
+      formData.append("file", file)
 
-      // Upload the file to Supabase Storage
-      const { data, error } = await supabase.storage.from("product-images").upload(`public/${file.name}`, file, {
-        cacheControl: "3600",
-        upsert: true,
+      // Send the file to our upload API
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
       })
 
-      if (error) {
-        console.error("Error uploading image to Supabase Storage:", error)
-        return null
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to upload image")
       }
 
-      // Get the public URL of the uploaded file
-      const { data: publicUrlData } = supabase.storage.from("product-images").getPublicUrl(`public/${file.name}`)
-
-      return publicUrlData.publicUrl
+      // Get the URL from the response
+      const data = await response.json()
+      return data.url
     } catch (error) {
-      console.error("Unexpected error during image upload:", error)
+      console.error("Error uploading image:", error)
       return null
     } finally {
       setIsUploading(false)
@@ -196,10 +187,10 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     const dataToSubmit = { ...formData }
 
     try {
-      // If there's a new uploaded image, upload it to Supabase Storage first
+      // If there's a new uploaded image, upload it to our API first
       if (uploadedImage) {
         setIsUploading(true)
-        const imageUrl = await uploadImageToStorage(uploadedImage)
+        const imageUrl = await uploadImageToServer(uploadedImage)
 
         if (imageUrl) {
           // Update the image URL in the data to submit
@@ -334,18 +325,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
             </div>
 
             <div>
-              <Label htmlFor="image">URL da Imagem</Label>
-              <Input
-                id="image"
-                value={formData.image}
-                onChange={(e) => setFormData((prev) => ({ ...prev, image: e.target.value }))}
-                placeholder="https://exemplo.com/imagem.jpg"
-                disabled={!!uploadedImage}
-              />
-            </div>
-
-            <div>
-              <Label>Upload de Imagem</Label>
+              <Label>Imagem do Produto</Label>
               <div className="space-y-2">
                 {imagePreview ? (
                   <div className="relative inline-block">
