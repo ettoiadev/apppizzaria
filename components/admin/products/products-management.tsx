@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useQueryClient } from '@tanstack/react-query' // ADICIONAR ESTA IMPORTAÇÃO
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,14 +13,16 @@ import { ProductModal } from "./product-modal"
 import { CategoryModal } from "./category-modal"
 import { DeleteConfirmModal } from "./delete-confirm-modal"
 import type { Product, Category } from "@/types"
-import { useProducts } from "@/hooks/use-products"
 
 export function ProductsManagement() {
-  const { products, loading, error, loadProducts, refreshProducts } = useProducts()
+  const queryClient = useQueryClient() // ADICIONAR ESTA LINHA
+  
+  const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
-  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false) // ADICIONAR ESTADO DE LOADING
 
   // Modal states
   const [productModalOpen, setProductModalOpen] = useState(false)
@@ -33,26 +36,29 @@ export function ProductsManagement() {
 
   // Load data
   useEffect(() => {
+    loadProducts()
     loadCategories()
   }, [])
 
-  useEffect(() => {
-    setAllProducts(products)
-  }, [products])
+  const loadProducts = async () => {
+    try {
+      const response = await fetch("/api/products")
+      const data = await response.json()
+      setProducts(data)
+    } catch (error) {
+      console.error("Error loading products:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const loadCategories = async () => {
     try {
       const response = await fetch("/api/categories")
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
       const data = await response.json()
       setCategories(data)
     } catch (error) {
       console.error("Error loading categories:", error)
-      setCategories([]) // Set empty array on error
     }
   }
 
@@ -81,7 +87,9 @@ export function ProductsManagement() {
     setDeleteModalOpen(true)
   }
 
+  // FUNÇÃO CORRIGIDA - Esta é a principal correção
   const handleSaveProduct = async (productData: Partial<Product>) => {
+    setSaving(true) // Definir loading
     try {
       const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products"
       const method = editingProduct ? "PUT" : "POST"
@@ -92,16 +100,41 @@ export function ProductsManagement() {
         body: JSON.stringify(productData),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Erro ao salvar produto")
-      }
+      if (response.ok) {
+        const savedProduct = await response.json()
+        
+        // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL
+        if (editingProduct) {
+          // Editando produto existente
+          setProducts(prevProducts => 
+            prevProducts.map(p => 
+              p.id === editingProduct.id ? { ...p, ...savedProduct } : p
+            )
+          )
+        } else {
+          // Criando novo produto
+          setProducts(prevProducts => [...prevProducts, savedProduct])
+        }
 
-      await loadProducts()
-      setProductModalOpen(false)
-      setEditingProduct(null)
+        // INVALIDAR CACHE DO REACT QUERY (se estiver usando)
+        await queryClient.invalidateQueries({ queryKey: ['products'] })
+        await queryClient.invalidateQueries({ queryKey: ['categories'] })
+        
+        // Fechar modal
+        setProductModalOpen(false)
+        
+        // Opcional: Mostrar toast de sucesso
+        // toast.success(editingProduct ? 'Produto atualizado!' : 'Produto criado!')
+        
+      } else {
+        throw new Error('Falha ao salvar produto')
+      }
     } catch (error) {
       console.error("Error saving product:", error)
+      // Opcional: Mostrar toast de erro
+      // toast.error('Erro ao salvar produto')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -111,30 +144,32 @@ export function ProductsManagement() {
       if (!product) return
 
       // Optimistically update the UI first
-      setAllProducts((prevProducts) =>
+      setProducts((prevProducts) =>
         prevProducts.map((p) => (p.id === productId ? { ...p, available: !p.available } : p)),
       )
 
-      // Send PATCH request to update availability
       const response = await fetch(`/api/products/${productId}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ available: !product.available }),
+        body: JSON.stringify({ ...product, available: !product.available }),
       })
 
       if (!response.ok) {
         // Revert the optimistic update if the API call failed
-        setAllProducts((prevProducts) =>
+        setProducts((prevProducts) =>
           prevProducts.map((p) => (p.id === productId ? { ...p, available: product.available } : p)),
         )
         console.error("Failed to update product availability")
+      } else {
+        // INVALIDAR CACHE APÓS ATUALIZAÇÃO BEM-SUCEDIDA
+        await queryClient.invalidateQueries({ queryKey: ['products'] })
       }
     } catch (error) {
       console.error("Error toggling product availability:", error)
       // Revert the optimistic update on error
       const originalProduct = products.find((p) => p.id === productId)
       if (originalProduct) {
-        setAllProducts((prevProducts) =>
+        setProducts((prevProducts) =>
           prevProducts.map((p) => (p.id === productId ? { ...p, available: originalProduct.available } : p)),
         )
       }
@@ -157,6 +192,7 @@ export function ProductsManagement() {
     setDeleteModalOpen(true)
   }
 
+  // FUNÇÃO DE CATEGORIA TAMBÉM CORRIGIDA
   const handleSaveCategory = async (categoryData: Partial<Category>) => {
     try {
       const url = editingCategory ? `/api/categories/${editingCategory.id}` : "/api/categories"
@@ -169,7 +205,23 @@ export function ProductsManagement() {
       })
 
       if (response.ok) {
-        await loadCategories()
+        const savedCategory = await response.json()
+        
+        // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL
+        if (editingCategory) {
+          setCategories(prevCategories =>
+            prevCategories.map(c =>
+              c.id === editingCategory.id ? { ...c, ...savedCategory } : c
+            )
+          )
+        } else {
+          setCategories(prevCategories => [...prevCategories, savedCategory])
+        }
+
+        // INVALIDAR CACHE DO REACT QUERY
+        await queryClient.invalidateQueries({ queryKey: ['categories'] })
+        await queryClient.invalidateQueries({ queryKey: ['products'] })
+        
         setCategoryModalOpen(false)
       }
     } catch (error) {
@@ -177,7 +229,7 @@ export function ProductsManagement() {
     }
   }
 
-  // Delete confirmation
+  // FUNÇÃO DELETE TAMBÉM CORRIGIDA
   const handleConfirmDelete = async () => {
     if (!deletingItem) return
 
@@ -187,30 +239,32 @@ export function ProductsManagement() {
         method: "DELETE",
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Erro ao excluir item")
-      }
-
-      if (deletingItem.type === "product") {
-        await loadProducts()
-      } else {
-        await loadCategories()
-        if (selectedCategory === deletingItem.id) {
-          setSelectedCategory("all")
+      if (response.ok) {
+        // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL
+        if (deletingItem.type === "product") {
+          setProducts(prevProducts => 
+            prevProducts.filter(p => p.id !== deletingItem.id)
+          )
+        } else {
+          setCategories(prevCategories =>
+            prevCategories.filter(c => c.id !== deletingItem.id)
+          )
+          if (selectedCategory === deletingItem.id) {
+            setSelectedCategory("all")
+          }
         }
-      }
 
-      setDeleteModalOpen(false)
-      setDeletingItem(null)
+        // INVALIDAR CACHE DO REACT QUERY
+        await queryClient.invalidateQueries({ 
+          queryKey: [deletingItem.type === "product" ? 'products' : 'categories'] 
+        })
+        
+        setDeleteModalOpen(false)
+        setDeletingItem(null)
+      }
     } catch (error) {
       console.error("Error deleting item:", error)
     }
-  }
-
-  const handleRefreshProducts = async () => {
-    console.log("🔄 Refresh manual solicitado...")
-    await refreshProducts()
   }
 
   if (loading) {
@@ -229,11 +283,8 @@ export function ProductsManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Gerenciar Produtos</h1>
           <p className="text-gray-600">Adicione, edite e gerencie seus produtos e categorias</p>
         </div>
+
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefreshProducts} disabled={loading}>
-            <Search className="w-4 h-4 mr-2" />
-            {loading ? "Atualizando..." : "Atualizar"}
-          </Button>
           <Button variant="outline" onClick={handleCreateCategory}>
             <Plus className="w-4 h-4 mr-2" />
             Nova Categoria
@@ -244,14 +295,7 @@ export function ProductsManagement() {
           </Button>
         </div>
       </div>
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-          <p className="text-red-800">Erro ao carregar produtos: {error}</p>
-          <Button variant="outline" size="sm" onClick={refreshProducts} className="mt-2">
-            Tentar Novamente
-          </Button>
-        </div>
-      )}
+
       {/* Categories Management */}
       <Card>
         <CardHeader>
@@ -285,6 +329,7 @@ export function ProductsManagement() {
           </div>
         </CardContent>
       </Card>
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -310,6 +355,7 @@ export function ProductsManagement() {
           </SelectContent>
         </Select>
       </div>
+
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map((product) => (
@@ -334,7 +380,9 @@ export function ProductsManagement() {
                     {product.available ? "Disponível" : "Indisponível"}
                   </Badge>
                 </div>
+
                 <div className="text-xl font-bold text-primary">R$ {product.price.toFixed(2)}</div>
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -344,6 +392,7 @@ export function ProductsManagement() {
                     />
                     <span className="text-sm">Disponível</span>
                   </div>
+
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)}>
                       <Edit className="w-4 h-4" />
@@ -358,25 +407,29 @@ export function ProductsManagement() {
           </Card>
         ))}
       </div>
+
       {filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">Nenhum produto encontrado</p>
         </div>
       )}
+
       {/* Modals */}
       <ProductModal
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
         product={editingProduct}
         categories={categories}
-        onSave={loadProducts}
+        onSave={handleSaveProduct}
       />
+
       <CategoryModal
         open={categoryModalOpen}
         onOpenChange={setCategoryModalOpen}
         category={editingCategory}
         onSave={handleSaveCategory}
       />
+
       <DeleteConfirmModal
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}
