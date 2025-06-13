@@ -227,49 +227,41 @@ export function ProductsManagement() {
     }
   }
 
-  // FUNÇÃO DELETE TAMBÉM CORRIGIDA
   const handleConfirmDelete = async () => {
-    if (!deletingItem) return
+    if (!deletingItem) return;
 
     try {
-      const endpoint = deletingItem.type === "product" ? "products" : "categories"
-      const response = await fetch(`/api/${endpoint}/${deletingItem.id}`, {
+      const endpoint = deletingItem.type === "product" ? "products" : "categories";
+      
+      // GARANTE QUE O ID É O UUID CORRETO
+      const idToDelete = deletingItem.id;
+
+      const response = await fetch(`/api/${endpoint}/${idToDelete}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Erro ao excluir item")
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erro ao excluir item");
       }
 
-      // ATUALIZAÇÃO OTIMISTA DO ESTADO LOCAL - CORRIGIDA
+      // ATUALIZA A LISTA NA TELA IMEDIATAMENTE APÓS O SUCESSO
       if (deletingItem.type === "product") {
-        setProducts((prevProducts) => prevProducts.filter((p) => p.id !== deletingItem.id))
-        console.log(`Produto ${deletingItem.name} removido da lista local`)
+        setProducts((prevProducts) => prevProducts.filter((p) => p.id !== idToDelete));
       } else {
-        setCategories((prevCategories) => prevCategories.filter((c) => c.id !== deletingItem.id))
-        if (selectedCategory === deletingItem.id) {
-          setSelectedCategory("all")
+        setCategories((prevCategories) => prevCategories.filter((c) => c.id !== idToDelete));
+        if (selectedCategory === idToDelete) {
+          setSelectedCategory("all");
         }
-        console.log(`Categoria ${deletingItem.name} removida da lista local`)
       }
-
-      // INVALIDAR CACHE DO REACT QUERY
-      await queryClient.invalidateQueries({
-        queryKey: [deletingItem.type === "product" ? "products" : "categories"],
-      })
-
-      // Fechar modal e limpar estado
-      setDeleteModalOpen(false)
-      setDeletingItem(null)
-
-      console.log(`${deletingItem.type === "product" ? "Produto" : "Categoria"} excluído com sucesso`)
     } catch (error) {
-      console.error("Error deleting item:", error)
-      // Opcional: Mostrar toast de erro
-      // toast.error(`Erro ao excluir ${deletingItem.type === "product" ? "produto" : "categoria"}`)
+      console.error("Error deleting item:", error);
+      // Adicionar um toast de erro para o usuário aqui é uma boa prática
+    } finally {
+      setDeleteModalOpen(false);
+      setDeletingItem(null);
     }
-  }
+  };
 
   if (loading) {
     return (
