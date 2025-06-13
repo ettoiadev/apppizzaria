@@ -158,6 +158,12 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     try {
       setIsUploading(true)
 
+      // Debug: Check current Supabase session before upload
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      console.log("Current Supabase session before upload:", session)
+
       // Upload the file to Supabase Storage
       const { data, error } = await supabase.storage.from("product-images").upload(`public/${file.name}`, file, {
         cacheControl: "3600",
