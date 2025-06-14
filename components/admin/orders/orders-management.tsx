@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,40 +24,31 @@ const statusLabels = {
 
 export function OrdersManagement() {
   const [selectedStatus, setSelectedStatus] = useState("all")
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Mock orders data
-  const mockOrders = [
-    {
-      id: "1001",
-      customer: { name: "João Silva", phone: "(11) 99999-9999" },
-      items: [{ name: "Pizza Margherita", quantity: 1, price: 32.9 }],
-      total: 32.9,
-      status: "RECEIVED",
-      createdAt: new Date().toISOString(),
-      paymentMethod: "PIX",
-    },
-    {
-      id: "1002",
-      customer: { name: "Maria Santos", phone: "(11) 88888-8888" },
-      items: [{ name: "Pizza Pepperoni", quantity: 2, price: 38.9 }],
-      total: 77.8,
-      status: "PREPARING",
-      createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-      paymentMethod: "Cartão",
-    },
-    {
-      id: "1003",
-      customer: { name: "Pedro Costa", phone: "(11) 77777-7777" },
-      items: [{ name: "Pizza Quatro Queijos", quantity: 1, price: 45.9 }],
-      total: 45.9,
-      status: "ON_THE_WAY",
-      createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      paymentMethod: "Dinheiro",
-    },
-  ]
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch("/api/orders")
+        if (response.ok) {
+          const data = await response.json()
+          setOrders(data)
+        } else {
+          console.error("Failed to fetch orders:", response.statusText)
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  const filteredOrders =
-    selectedStatus === "all" ? mockOrders : mockOrders.filter((order) => order.status === selectedStatus)
+    fetchOrders()
+  }, [])
+
+  const filteredOrders = selectedStatus === "all" ? orders : orders.filter((order) => order.status === selectedStatus)
 
   const updateOrderStatus = (orderId: string, newStatus: string) => {
     // In production, make API call to update order status
@@ -88,68 +79,79 @@ export function OrdersManagement() {
       </div>
 
       <div className="grid gap-4">
-        {filteredOrders.map((order) => (
-          <Card key={order.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">Pedido #{order.id}</CardTitle>
-                  <p className="text-gray-600">
-                    {order.customer.name} - {order.customer.phone}
-                  </p>
-                  <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleString("pt-BR")}</p>
+        {loading ? (
+          <div className="text-center py-8">
+            <p>Carregando pedidos...</p>
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="text-center py-8">
+            <p>Nenhum pedido encontrado.</p>
+          </div>
+        ) : (
+          filteredOrders.map((order) => (
+            <Card key={order.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">Pedido #{order.id}</CardTitle>
+                    <p className="text-gray-600">
+                      {order.profiles?.full_name || "Cliente não identificado"} -{" "}
+                      {order.phone || "Telefone não informado"}
+                    </p>
+                    <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleString("pt-BR")}</p>
+                  </div>
+                  <Badge className={statusColors[order.status as keyof typeof statusColors]}>
+                    {statusLabels[order.status as keyof typeof statusLabels]}
+                  </Badge>
                 </div>
-                <Badge className={statusColors[order.status as keyof typeof statusColors]}>
-                  {statusLabels[order.status as keyof typeof statusLabels]}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Itens do Pedido:</h4>
-                  {order.items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>
-                        {item.quantity}x {item.name}
-                      </span>
-                      <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Itens do Pedido:</h4>
+                    {order.order_items?.map((item, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span>
+                          {item.quantity}x {item.products.name}
+                        </span>
+                        <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between font-medium pt-2 border-t">
+                      <span>Total:</span>
+                      <span>R$ {order.total.toFixed(2)}</span>
                     </div>
-                  ))}
-                  <div className="flex justify-between font-medium pt-2 border-t">
-                    <span>Total:</span>
-                    <span>R$ {order.total.toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Pagamento: {order.paymentMethod}</span>
+
+                    <div className="flex gap-2">
+                      {order.status === "RECEIVED" && (
+                        <Button size="sm" onClick={() => updateOrderStatus(order.id, "PREPARING")}>
+                          Iniciar Preparo
+                        </Button>
+                      )}
+                      {order.status === "PREPARING" && (
+                        <Button size="sm" onClick={() => updateOrderStatus(order.id, "ON_THE_WAY")}>
+                          Enviar para Entrega
+                        </Button>
+                      )}
+                      {order.status === "ON_THE_WAY" && (
+                        <Button size="sm" onClick={() => updateOrderStatus(order.id, "DELIVERED")}>
+                          Marcar como Entregue
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => updateOrderStatus(order.id, "CANCELLED")}>
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Pagamento: {order.paymentMethod}</span>
-
-                  <div className="flex gap-2">
-                    {order.status === "RECEIVED" && (
-                      <Button size="sm" onClick={() => updateOrderStatus(order.id, "PREPARING")}>
-                        Iniciar Preparo
-                      </Button>
-                    )}
-                    {order.status === "PREPARING" && (
-                      <Button size="sm" onClick={() => updateOrderStatus(order.id, "ON_THE_WAY")}>
-                        Enviar para Entrega
-                      </Button>
-                    )}
-                    {order.status === "ON_THE_WAY" && (
-                      <Button size="sm" onClick={() => updateOrderStatus(order.id, "DELIVERED")}>
-                        Marcar como Entregue
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => updateOrderStatus(order.id, "CANCELLED")}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   )

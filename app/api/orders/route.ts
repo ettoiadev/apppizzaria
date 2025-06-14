@@ -1,12 +1,24 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-// Mock orders storage - In production, use a database
-const mockOrders: any[] = []
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 
 export async function GET() {
   try {
-    return NextResponse.json(mockOrders)
+    const supabase = createRouteHandlerClient({ cookies })
+
+    const { data: orders, error } = await supabase
+      .from("orders")
+      .select("*, profiles(full_name), order_items(*, products(name, description))")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching orders:", error)
+      return NextResponse.json({ error: "Erro ao buscar pedidos" }, { status: 500 })
+    }
+
+    return NextResponse.json(orders)
   } catch (error) {
+    console.error("Unexpected error:", error)
     return NextResponse.json({ error: "Erro ao buscar pedidos" }, { status: 500 })
   }
 }
@@ -23,6 +35,8 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     }
 
+    // Mock orders storage - In production, use a database
+    const mockOrders: any[] = []
     mockOrders.push(newOrder)
 
     return NextResponse.json(newOrder, { status: 201 })
