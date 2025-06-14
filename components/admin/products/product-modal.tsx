@@ -237,6 +237,8 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
 
       // If a new file was uploaded, send it to the upload API first
       if (uploadedImage) {
+        console.log("Uploading new image file:", uploadedImage.name)
+
         const uploadFormData = new FormData()
         uploadFormData.append("file", uploadedImage)
 
@@ -245,13 +247,29 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
           body: uploadFormData,
         })
 
+        console.log("Upload response status:", uploadResponse.status)
+
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json()
+          console.error("Upload failed:", errorData)
           throw new Error(errorData.message || "Failed to upload image")
         }
 
         const uploadResult = await uploadResponse.json()
+        console.log("Upload result:", uploadResult)
+
+        if (!uploadResult.url) {
+          throw new Error("No URL returned from upload")
+        }
+
         finalImageUrl = uploadResult.url // Use the permanent URL from Supabase Storage
+        console.log("Final image URL:", finalImageUrl)
+      }
+
+      // Clean up blob URLs from existing image URLs
+      if (finalImageUrl && finalImageUrl.startsWith("blob:")) {
+        console.warn("Detected blob URL, clearing it:", finalImageUrl)
+        finalImageUrl = ""
       }
 
       // Create the final payload with the permanent image URL
@@ -259,6 +277,8 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         ...formData,
         image: finalImageUrl, // This will be either the new permanent URL or existing URL
       }
+
+      console.log("Submitting product payload:", productPayload)
 
       // Call the onSave function with the corrected payload
       onSave(productPayload)
