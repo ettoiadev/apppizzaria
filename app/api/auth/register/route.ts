@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
     const { error: profileError } = await supabase.from("profiles").insert({
       id: authData.user.id,
       full_name: full_name.trim(),
-      email: email.toLowerCase().trim(),
     })
 
     // Handle profile creation errors
