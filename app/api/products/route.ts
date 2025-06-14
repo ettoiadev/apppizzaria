@@ -1,40 +1,59 @@
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server"; // ajuste para seu path real se for diferente
 
-export async function POST(request: Request) {
-  try {
-    console.log("📥 [API] Recebendo novo produto...")
-    const body = await request.json()
-    console.log("📋 [API] Dados do produto:", body)
+// GET /api/products - Listar produtos do Supabase
+export async function GET() {
+  const supabase = createClient();
 
-    // Simulate product creation (replace with actual database logic)
-    const result = {
-      id: Math.random().toString(36).substring(7), // Generate a random ID
-      ...body,
-      createdAt: new Date().toISOString(),
-    }
+  const { data: products, error } = await supabase
+    .from("products")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    console.log("✅ [API] Produto criado com sucesso:", result)
-    return NextResponse.json(result)
-  } catch (error) {
-    console.error("❌ [API] Erro ao criar produto:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+  if (error) {
+    console.error("Erro ao buscar produtos:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  return NextResponse.json(products);
 }
 
-export async function GET() {
+// POST /api/products - Criar novo produto no Supabase
+export async function POST(request: Request) {
+  const supabase = createClient();
+
   try {
-    console.log("📥 [API] Buscando produtos...")
+    const body = await request.json();
 
-    // Simulate fetching products (replace with actual database logic)
-    const products = [
-      { id: "1", name: "Product 1", price: 20 },
-      { id: "2", name: "Product 2", price: 30 },
-    ]
+    const { name, description, price, image, categoryId } = body;
 
-    console.log(`✅ [API] Retornando ${products.length} produtos`)
-    return NextResponse.json(products)
-  } catch (error) {
-    console.error("❌ [API] Erro ao buscar produtos:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    // 🧠 Validação mínima dos campos obrigatórios
+    if (!name || !price || !categoryId) {
+      return NextResponse.json(
+        { error: "Campos obrigatórios ausentes (name, price, categoryId)" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase.from("products").insert([
+      {
+        name,
+        description,
+        price,
+        image,
+        available: true,
+        categoryId,
+      },
+    ]).select("*").single(); // retorna o produto criado
+
+    if (error) {
+      console.error("Erro ao criar produto:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error("Erro inesperado:", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }
