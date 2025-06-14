@@ -75,7 +75,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
   // Cleanup function para URLs de preview
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith('blob:')) {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview)
       }
     }
@@ -138,20 +138,20 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       setErrors(["Apenas arquivos de imagem são permitidos"])
       return
     }
 
     setIsProcessing(true)
     setErrors([])
-    
+
     try {
       const processedFile = await processImage(file)
       setUploadedImage(processedFile)
 
       // Cleanup previous preview URL
-      if (imagePreview && imagePreview.startsWith('blob:')) {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview)
       }
 
@@ -171,10 +171,10 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
 
   const removeImage = () => {
     // Cleanup preview URL
-    if (imagePreview && imagePreview.startsWith('blob:')) {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview)
     }
-    
+
     setUploadedImage(null)
     setImagePreview("")
     setFormData((prev) => ({ ...prev, image: "" }))
@@ -223,14 +223,51 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
     return newErrors.length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
 
-    onSave(formData)
+    setIsProcessing(true)
+
+    try {
+      let finalImageUrl = formData.image
+
+      // If a new file was uploaded, send it to the upload API first
+      if (uploadedImage) {
+        const uploadFormData = new FormData()
+        uploadFormData.append("file", uploadedImage)
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadFormData,
+        })
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json()
+          throw new Error(errorData.message || "Failed to upload image")
+        }
+
+        const uploadResult = await uploadResponse.json()
+        finalImageUrl = uploadResult.url // Use the permanent URL from Supabase Storage
+      }
+
+      // Create the final payload with the permanent image URL
+      const productPayload = {
+        ...formData,
+        image: finalImageUrl, // This will be either the new permanent URL or existing URL
+      }
+
+      // Call the onSave function with the corrected payload
+      onSave(productPayload)
+    } catch (error) {
+      console.error("Error submitting product:", error)
+      setErrors([error instanceof Error ? error.message : "Failed to save product"])
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const addSize = () => {

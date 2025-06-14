@@ -29,16 +29,10 @@ export async function POST(request: Request) {
       throw new Error(error.message);
     }
 
-    // CORREÇÃO: Construir a URL pública corretamente
-    // Em vez de usar getPublicUrl que pode gerar blob URLs, 
-    // construir manualmente a URL pública do Supabase
-    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/product-images/${fileName}`;
-
-    // Verificação adicional: se getPublicUrl funcionar melhor no seu ambiente,
-    // descomente as linhas abaixo e comente a linha acima
-    // const { data: { publicUrl } } = supabase.storage
-    //   .from('product-images')
-    //   .getPublicUrl(fileName);
+    // Constrói a URL pública do arquivo que acabamos de enviar
+    const { data: { publicUrl } } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName);
 
     return NextResponse.json({ url: publicUrl });
 
