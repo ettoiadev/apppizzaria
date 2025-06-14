@@ -4,7 +4,6 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,7 +34,6 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { register } = useAuth()
   const router = useRouter()
 
   const handleInputChange = (field: string, value: string) => {
@@ -109,21 +107,35 @@ export default function RegisterPage() {
     setError("")
 
     try {
-      // Format address for registration
-      const fullAddress = `${formData.address.street}, ${formData.address.number}${
-        formData.address.complement ? `, ${formData.address.complement}` : ""
-      } - ${formData.address.neighborhood}, ${formData.address.city}/${formData.address.state} - CEP: ${
-        formData.address.zipCode
-      }`
+      // Prepare payload for API
+      const payload = {
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.name,
+      }
 
-      await register({
-        ...formData,
-        address: fullAddress,
-        addressData: formData.address, // Keep structured address data
+      // Call our registration API endpoint
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       })
-      router.push("/cardapio")
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        // Handle API errors
+        setError(result.error || "Erro ao criar conta. Tente novamente.")
+        return
+      }
+
+      // Registration successful - redirect to login with success message
+      router.push("/login?message=Conta criada com sucesso! Faça login para continuar.")
     } catch (error) {
-      setError("Erro ao criar conta. Tente novamente.")
+      console.error("Registration error:", error)
+      setError("Erro ao criar conta. Verifique sua conexão e tente novamente.")
     } finally {
       setIsLoading(false)
     }
