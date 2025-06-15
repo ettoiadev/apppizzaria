@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,7 +28,33 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [registrationAllowed, setRegistrationAllowed] = useState<boolean | null>(null)
 
+  // Check if admin registration is allowed when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      checkRegistrationStatus()
+    }
+  }, [isOpen])
+
+  const checkRegistrationStatus = async () => {
+    try {
+      const response = await fetch("/api/admin/settings")
+      if (response.ok) {
+        const settings = await response.json()
+        setRegistrationAllowed(settings.allowAdminRegistration === true || settings.allowAdminRegistration === "true")
+      } else {
+        // If settings can't be loaded, assume registration is allowed (default behavior)
+        setRegistrationAllowed(true)
+      }
+    } catch (error) {
+      console.error("Error checking registration status:", error)
+      // On error, assume registration is allowed (default behavior)
+      setRegistrationAllowed(true)
+    }
+  }
+
+  // Rest of the existing component code remains the same...
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     setError("")
@@ -72,6 +98,11 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!registrationAllowed) {
+      setError("O cadastro de administradores está desabilitado")
+      return
+    }
 
     if (!validateForm()) {
       return
@@ -133,8 +164,28 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
       })
       setError("")
       setSuccess("")
+      setRegistrationAllowed(null)
       onClose()
     }
+  }
+
+  // Show loading while checking registration status
+  if (registrationAllowed === null) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Criar Conta de Administrador
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   return (
@@ -147,104 +198,120 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
+        {!registrationAllowed ? (
+          <div className="space-y-4">
             <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                O cadastro de administradores está desabilitado. Entre em contato com um administrador existente para
+                habilitar esta funcionalidade.
+              </AlertDescription>
             </Alert>
-          )}
-
-          {success && (
-            <Alert>
-              <AlertDescription className="text-green-600">{success}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Nome Completo</Label>
-            <Input
-              id="full_name"
-              type="text"
-              value={formData.full_name}
-              onChange={(e) => handleInputChange("full_name", e.target.value)}
-              placeholder="Digite seu nome completo"
-              disabled={isLoading}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              placeholder="Digite seu email"
-              disabled={isLoading}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                placeholder="Digite sua senha"
-                disabled={isLoading}
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <div className="flex justify-end">
+              <Button onClick={handleClose} variant="outline">
+                Fechar
               </Button>
             </div>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-            <div className="relative">
+            {success && (
+              <Alert>
+                <AlertDescription className="text-green-600">{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="full_name">Nome Completo</Label>
               <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                placeholder="Confirme sua senha"
+                id="full_name"
+                type="text"
+                value={formData.full_name}
+                onChange={(e) => handleInputChange("full_name", e.target.value)}
+                placeholder="Digite seu nome completo"
                 disabled={isLoading}
                 required
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                placeholder="Digite seu email"
                 disabled={isLoading}
-              >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  placeholder="Digite sua senha"
+                  disabled={isLoading}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  placeholder="Confirme sua senha"
+                  disabled={isLoading}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading} className="flex-1">
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading} className="flex-1">
+                {isLoading ? "Criando..." : "Criar Conta"}
               </Button>
             </div>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading} className="flex-1">
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? "Criando..." : "Criar Conta"}
-            </Button>
-          </div>
-        </form>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -100,6 +100,9 @@ export async function PUT(request: NextRequest) {
 
 function getDefaultSettings() {
   return {
+    // Admin Registration Control (enabled by default for new environments)
+    allowAdminRegistration: true,
+
     // General Settings
     companyName: "Pizza Express",
     description: "A melhor pizza da cidade, entregue na sua porta",
@@ -141,6 +144,12 @@ function getDefaultSettings() {
     pushNotifications: true,
     newOrderNotification: true,
     orderStatusNotification: true,
+
+    // Security Settings
+    requireStrongPasswords: true,
+    sessionTimeout: 60,
+    twoFactorEnabled: false,
+    loginAttemptLimit: 5,
 
     // Feature Boxes
     fastDeliveryEnabled: true,
