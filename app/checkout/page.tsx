@@ -71,7 +71,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          <CheckoutForm onSubmit={handleOrderSubmit} isLoading={isLoading} />
+          <CheckoutForm onSubmit={handleOrderSubmit} isLoading={isLoading} userId={user?.id} />
           <OrderSummary items={items} total={total} />
         </div>
       </main>
