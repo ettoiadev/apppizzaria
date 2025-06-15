@@ -1,17 +1,15 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { AddressInput } from "@/components/ui/address-input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { MapPin, Plus, ArrowLeft, Check, Edit3, Home, Loader2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { MapPin, Plus, Check, ArrowLeft, Loader2 } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Address {
   id: string
@@ -28,299 +26,323 @@ interface Address {
 
 interface SmartDeliverySectionProps {
   userId: string
-  onAddressSelect: (address: any) => void
-  selectedAddress?: any
+  onAddressSelect: (addressData: any) => void
+  selectedAddress: any
 }
 
-type ViewMode = "loading" | "default" | "list" | "form"
-
 export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress }: SmartDeliverySectionProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("loading")
   const [addresses, setAddresses] = useState<Address[]>([])
-  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    address: {
-      zipCode: "",
-      street: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      number: "",
-      complement: "",
-    },
-    setAsDefault: false,
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [view, setView] = useState<"default" | "list" | "form">("default")
+  const [newAddress, setNewAddress] = useState({
+    zipCode: "",
+    street: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    number: "",
+    complement: "",
   })
+  const [addressName, setAddressName] = useState("Meu Endereço")
+  const [makeDefault, setMakeDefault] = useState(false)
+  const [savingAddress, setSavingAddress] = useState(false)
 
+  // Carregar endereços do usuário
   useEffect(() => {
-    console.log("SmartDeliverySection mounted with userId:", userId)
-    if (userId) {
-      loadAddresses()
-    } else {
-      console.log("No userId provided, showing form")
-      setViewMode("form")
-      setIsLoading(false)
+    async function loadAddresses() {
+      if (!userId) return
+
+      setLoading(true)
+      setError("")
+
+      try {
+        console.log(`[SmartDeliverySection] Carregando endereços para userId: ${userId}`)
+        const response = await fetch(`/api/addresses?userId=${userId}`)
+
+        if (!response.ok) {
+          throw new Error(`Erro ao carregar endereços: ${response.status}`)
+        }
+
+        const data = await response.json()
+        console.log("[SmartDeliverySection] Endereços carregados:", data)
+
+        if (data.addresses && Array.isArray(data.addresses)) {
+          setAddresses(data.addresses)
+
+          // Se houver um endereço padrão, selecione-o automaticamente
+          const defaultAddress = data.addresses.find((addr: Address) => addr.is_default)
+          if (defaultAddress && view === "default") {
+            selectAddress(defaultAddress)
+          }
+
+          // Se não houver endereços, mostrar o formulário
+          if (data.addresses.length === 0) {
+            setView("form")
+          }
+        } else {
+          console.log("[SmartDeliverySection] Nenhum endereço encontrado ou formato inválido")
+          setAddresses([])
+          setView("form")
+        }
+      } catch (err) {
+        console.error("[SmartDeliverySection] Erro ao carregar endereços:", err)
+        setError("Não foi possível carregar seus endereços. Tente novamente.")
+        setView("form")
+      } finally {
+        setLoading(false)
+      }
     }
+
+    loadAddresses()
   }, [userId])
 
-  const loadAddresses = async () => {
-    setIsLoading(true)
-    console.log("Loading addresses for userId:", userId)
-
-    try {
-      const response = await fetch(`/api/addresses?userId=${userId}`)
-      console.log("API response status:", response.status)
-
-      if (!response.ok) {
-        console.error("Failed to fetch addresses:", response.status, response.statusText)
-        setViewMode("form")
-        return
-      }
-
-      const data = await response.json()
-      console.log("API response data:", data)
-
-      if (data.addresses && Array.isArray(data.addresses)) {
-        setAddresses(data.addresses)
-        const defaultAddr = data.addresses.find((addr: Address) => addr.is_default)
-        console.log("Default address found:", defaultAddr)
-
-        if (defaultAddr) {
-          setDefaultAddress(defaultAddr)
-          setViewMode("default")
-          // Auto-select default address
-          onAddressSelect({
-            name: defaultAddr.name,
-            address: formatAddressString(defaultAddr),
-            addressData: {
-              zipCode: defaultAddr.zip_code,
-              street: defaultAddr.street,
-              number: defaultAddr.number,
-              complement: defaultAddr.complement || "",
-              neighborhood: defaultAddr.neighborhood,
-              city: defaultAddr.city,
-              state: defaultAddr.state,
-            },
-          })
-        } else if (data.addresses.length > 0) {
-          console.log("No default address, showing list")
-          setViewMode("list")
-        } else {
-          console.log("No addresses found, showing form")
-          setViewMode("form")
-        }
-      } else {
-        console.log("No addresses in response, showing form")
-        setViewMode("form")
-      }
-    } catch (error) {
-      console.error("Error loading addresses:", error)
-      setViewMode("form")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const formatAddressString = (address: Address) => {
-    return `${address.street}, ${address.number}${
+  // Selecionar um endereço
+  const selectAddress = (address: Address) => {
+    const formattedAddress = `${address.street}, ${address.number}${
       address.complement ? `, ${address.complement}` : ""
     } - ${address.neighborhood}, ${address.city}/${address.state} - CEP: ${address.zip_code}`
-  }
 
-  const handleAddressSelect = (address: Address) => {
+    const addressData = {
+      zipCode: address.zip_code,
+      street: address.street,
+      number: address.number,
+      complement: address.complement || "",
+      neighborhood: address.neighborhood,
+      city: address.city,
+      state: address.state,
+    }
+
     onAddressSelect({
       name: address.name,
-      address: formatAddressString(address),
-      addressData: {
-        zipCode: address.zip_code,
-        street: address.street,
-        number: address.number,
-        complement: address.complement || "",
-        neighborhood: address.neighborhood,
-        city: address.city,
-        state: address.state,
-      },
+      address: formattedAddress,
+      addressData,
     })
-    setViewMode("default")
-    setDefaultAddress(address)
+
+    setView("default")
   }
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSaving(true)
+  // Salvar novo endereço
+  const saveNewAddress = async () => {
+    if (!userId) return
+
+    setSavingAddress(true)
 
     try {
       const response = await fetch("/api/addresses", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          customerId: userId,
-          name: formData.name || "Endereço Principal",
-          zipCode: formData.address.zipCode,
-          street: formData.address.street,
-          number: formData.address.number,
-          complement: formData.address.complement,
-          neighborhood: formData.address.neighborhood,
-          city: formData.address.city,
-          state: formData.address.state,
-          isDefault: formData.setAsDefault,
+          customer_id: userId,
+          name: addressName,
+          zip_code: newAddress.zipCode,
+          street: newAddress.street,
+          number: newAddress.number,
+          complement: newAddress.complement,
+          neighborhood: newAddress.neighborhood,
+          city: newAddress.city,
+          state: newAddress.state,
+          is_default: makeDefault,
         }),
       })
 
-      if (response.ok) {
-        const { address } = await response.json()
-
-        // Update local state
-        setAddresses((prev) => [address, ...prev])
-
-        // Select the new address
-        onAddressSelect({
-          name: formData.name || "Endereço Principal",
-          address: `${formData.address.street}, ${formData.address.number}${
-            formData.address.complement ? `, ${formData.address.complement}` : ""
-          } - ${formData.address.neighborhood}, ${formData.address.city}/${formData.address.state} - CEP: ${formData.address.zipCode}`,
-          addressData: formData.address,
-        })
-
-        if (formData.setAsDefault) {
-          setDefaultAddress(address)
-        }
-
-        setViewMode("default")
-
-        // Reset form
-        setFormData({
-          name: "",
-          address: {
-            zipCode: "",
-            street: "",
-            neighborhood: "",
-            city: "",
-            state: "",
-            number: "",
-            complement: "",
-          },
-          setAsDefault: false,
-        })
+      if (!response.ok) {
+        throw new Error("Erro ao salvar endereço")
       }
-    } catch (error) {
-      console.error("Error saving address:", error)
+
+      const { address } = await response.json()
+
+      // Adicionar o novo endereço à lista
+      setAddresses((prev) => {
+        // Se o novo endereço for padrão, remover o padrão dos outros
+        if (makeDefault) {
+          return [{ ...address, is_default: true }, ...prev.map((a) => ({ ...a, is_default: false }))]
+        }
+        return [...prev, address]
+      })
+
+      // Selecionar o novo endereço
+      selectAddress(address)
+
+      // Limpar o formulário
+      setNewAddress({
+        zipCode: "",
+        street: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        number: "",
+        complement: "",
+      })
+      setAddressName("Meu Endereço")
+      setMakeDefault(false)
+
+      // Voltar para a visualização padrão
+      setView("default")
+    } catch (err) {
+      console.error("Erro ao salvar endereço:", err)
+      setError("Não foi possível salvar o endereço. Tente novamente.")
     } finally {
-      setIsSaving(false)
+      setSavingAddress(false)
     }
   }
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleAddressChange = (address: any) => {
-    setFormData((prev) => ({ ...prev, address }))
-  }
-
-  if (viewMode === "loading") {
+  // Renderizar com base no estado atual
+  if (loading) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Dados de Entrega</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="flex items-center gap-2 text-gray-600">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Carregando seus endereços...</span>
+        <CardContent className="flex flex-col items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <p className="mt-2 text-sm text-gray-500">Carregando seus endereços...</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (view === "form") {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{addresses.length > 0 ? "Novo Endereço" : "Adicionar Endereço de Entrega"}</CardTitle>
+          {addresses.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setView("list")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="addressName">Nome do Endereço</Label>
+            <Input
+              id="addressName"
+              placeholder="Ex: Casa, Trabalho"
+              value={addressName}
+              onChange={(e) => setAddressName(e.target.value)}
+            />
+          </div>
+
+          <AddressInput value={newAddress} onChange={setNewAddress} required />
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="makeDefault"
+              checked={makeDefault}
+              onCheckedChange={(checked) => setMakeDefault(checked === true)}
+            />
+            <Label htmlFor="makeDefault" className="text-sm font-normal">
+              Definir como endereço padrão
+            </Label>
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-2">
+            {addresses.length > 0 && (
+              <Button variant="outline" onClick={() => setView("list")}>
+                Cancelar
+              </Button>
+            )}
+            <Button onClick={saveNewAddress} disabled={savingAddress}>
+              {savingAddress ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Endereço"
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  if (viewMode === "default" && defaultAddress) {
+  if (view === "list") {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Endereço de Entrega
-          </CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Selecione um Endereço</CardTitle>
+          {selectedAddress && (
+            <Button variant="ghost" size="sm" onClick={() => setView("default")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Home className="w-4 h-4 text-green-600" />
-                <span className="font-medium text-green-800">{defaultAddress.name}</span>
-                {defaultAddress.is_default && (
-                  <Badge variant="secondary" className="text-xs">
-                    Padrão
-                  </Badge>
-                )}
+          {addresses.map((address) => (
+            <div
+              key={address.id}
+              className={`flex items-start border rounded-lg p-3 cursor-pointer transition-colors ${
+                selectedAddress?.id === address.id
+                  ? "border-primary bg-primary/5"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+              onClick={() => selectAddress(address)}
+            >
+              <div className="mr-3 mt-1">
+                <MapPin className="h-5 w-5 text-gray-500" />
               </div>
-            </div>
-            <p className="text-sm text-gray-700 leading-relaxed">{formatAddressString(defaultAddress)}</p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button className="flex-1" size="lg">
-              <Check className="w-4 h-4 mr-2" />
-              Confirmar Endereço
-            </Button>
-            <Button variant="outline" onClick={() => setViewMode("list")} className="flex-1 sm:flex-none">
-              <Edit3 className="w-4 h-4 mr-2" />
-              Trocar Endereço
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (viewMode === "list") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Escolher Endereço de Entrega
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button variant="ghost" onClick={() => setViewMode("default")} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-
-          <div className="space-y-3">
-            {addresses.map((address) => (
-              <div
-                key={address.id}
-                className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => handleAddressSelect(address)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Home className="w-4 h-4 text-gray-600" />
-                    <span className="font-medium">{address.name}</span>
-                    {address.is_default && (
-                      <Badge variant="secondary" className="text-xs">
-                        Padrão
-                      </Badge>
-                    )}
-                  </div>
+              <div className="flex-1">
+                <div className="flex items-center">
+                  <h3 className="font-medium">{address.name}</h3>
+                  {address.is_default && (
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      Padrão
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">{formatAddressString(address)}</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {address.street}, {address.number}
+                  {address.complement && `, ${address.complement}`}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {address.neighborhood} - {address.city}/{address.state}
+                </p>
+                <p className="text-sm text-gray-600">CEP: {address.zip_code}</p>
               </div>
-            ))}
-          </div>
+              {selectedAddress?.id === address.id && <Check className="h-5 w-5 text-primary" />}
+            </div>
+          ))}
 
-          <Separator />
-
-          <Button variant="outline" onClick={() => setViewMode("form")} className="w-full">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button
+            variant="outline"
+            className="w-full mt-4 flex items-center justify-center"
+            onClick={() => setView("form")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             Adicionar Novo Endereço
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // View === "default"
+  const selectedAddr = addresses.find((a) => a.is_default) || addresses[0]
+
+  if (!selectedAddr) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados de Entrega</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-center py-4 text-gray-500">Você ainda não possui endereços cadastrados.</p>
+          <Button className="w-full" onClick={() => setView("form")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Endereço de Entrega
           </Button>
         </CardContent>
       </Card>
@@ -330,62 +352,42 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="w-5 h-5" />
-          {addresses.length > 0 ? "Adicionar Novo Endereço" : "Dados de Entrega"}
-        </CardTitle>
+        <CardTitle>Endereço de Entrega</CardTitle>
       </CardHeader>
-      <CardContent>
-        {addresses.length > 0 && (
-          <Button variant="ghost" onClick={() => setViewMode("list")} className="mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar aos Endereços Salvos
-          </Button>
-        )}
-
-        <form onSubmit={handleFormSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="addressName">Nome do Endereço</Label>
-              <Input
-                id="addressName"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                placeholder="Ex: Casa, Trabalho, Apartamento..."
-              />
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Endereço Completo</h3>
-              <AddressInput value={formData.address} onChange={handleAddressChange} required />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="setAsDefault"
-                checked={formData.setAsDefault}
-                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, setAsDefault: !!checked }))}
-              />
-              <Label htmlFor="setAsDefault" className="text-sm">
-                Definir como endereço padrão
-              </Label>
+      <CardContent className="space-y-4">
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="flex items-start">
+            <MapPin className="h-5 w-5 text-gray-500 mr-3 mt-1" />
+            <div>
+              <div className="flex items-center">
+                <h3 className="font-medium">{selectedAddr.name}</h3>
+                {selectedAddr.is_default && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    Padrão
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mt-1">
+                {selectedAddr.street}, {selectedAddr.number}
+                {selectedAddr.complement && `, ${selectedAddr.complement}`}
+              </p>
+              <p className="text-sm text-gray-600">
+                {selectedAddr.neighborhood} - {selectedAddr.city}/{selectedAddr.state}
+              </p>
+              <p className="text-sm text-gray-600">CEP: {selectedAddr.zip_code}</p>
             </div>
           </div>
+        </div>
 
-          <Button type="submit" className="w-full" size="lg" disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Salvando Endereço...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                Salvar e Usar Este Endereço
-              </>
-            )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button className="flex-1" variant="outline" onClick={() => setView("list")}>
+            Trocar Endereço
           </Button>
-        </form>
+          <Button className="flex-1" variant="outline" onClick={() => setView("form")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Endereço
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

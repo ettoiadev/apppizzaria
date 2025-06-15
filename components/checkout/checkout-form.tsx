@@ -1,64 +1,212 @@
 "use client"
 
-import { useState } from "react"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { AddressInput } from "@/components/address-input"
-import { SmartDeliverySection } from "./smart-delivery-section"
+import type React from "react"
 
-interface FormData {
-  name: string
-  address: string
-  addressData: any // Replace 'any' with a more specific type if possible
-}
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AddressInput } from "@/components/ui/address-input" // Caminho corrigido
+import { SmartDeliverySection } from "@/components/checkout/smart-delivery-section"
+import { CreditCard, Banknote, QrCode, Upload } from "lucide-react"
 
 interface CheckoutFormProps {
-  userId: string | null | undefined
+  onSubmit: (data: any) => void
+  isLoading: boolean
+  userId?: string
 }
 
-export function CheckoutForm({ userId }: CheckoutFormProps) {
-  const [formData, setFormData] = useState<FormData>({
+export function CheckoutForm({ onSubmit, isLoading, userId }: CheckoutFormProps) {
+  const [formData, setFormData] = useState({
     name: "",
+    phone: "",
     address: "",
-    addressData: null,
+    addressData: {
+      zipCode: "",
+      street: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      number: "",
+      complement: "",
+    },
+    paymentMethod: "pix",
+    notes: "",
   })
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSubmit(formData)
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleAddressSelect = (addressData: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      name: addressData.name || prev.name,
+      address: addressData.address,
+      addressData: addressData.addressData,
+    }))
+  }
+
+  const handleAddressChange = (address: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      addressData: address,
+      address: `${address.street}, ${address.number}${
+        address.complement ? `, ${address.complement}` : ""
+      } - ${address.neighborhood}, ${address.city}/${address.state} - CEP: ${address.zipCode}`,
+    }))
+  }
+
   return (
-    <div className="space-y-8">
-      <div className="space-y-6">
-        <h2 className="text-xl font-semibold text-gray-900">Dados de Entrega</h2>
-        {userId ? (
-          <SmartDeliverySection
-            userId={userId}
-            onAddressSelect={(addressData) => {
-              setFormData((prev) => ({
-                ...prev,
-                name: addressData.name,
-                address: addressData.address,
-                addressData: addressData.addressData,
-              }))
-            }}
-            selectedAddress={formData.addressData}
-          />
-        ) : (
-          <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Smart Delivery Section */}
+      {userId ? (
+        <SmartDeliverySection
+          userId={userId}
+          onAddressSelect={handleAddressSelect}
+          selectedAddress={formData.addressData}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados de Entrega</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone *</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Endereço de Entrega</h3>
+              <AddressInput value={formData.addressData} onChange={handleAddressChange} required />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Contact Info for Logged Users */}
+      {userId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações de Contato</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo</Label>
+              <Label htmlFor="phone">Telefone para Contato *</Label>
               <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                placeholder="(11) 99999-9999"
                 required
               />
             </div>
-            <AddressInput
-              value={formData.addressData}
-              onChange={(address) => setFormData((prev) => ({ ...prev, addressData: address }))}
-              required
-            />
-          </div>
-        )}
-      </div>
-    </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Forma de Pagamento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup
+            value={formData.paymentMethod}
+            onValueChange={(value) => handleInputChange("paymentMethod", value)}
+          >
+            <div className="flex items-center space-x-2 p-3 border rounded-lg">
+              <RadioGroupItem value="pix" id="pix" />
+              <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
+                <QrCode className="w-5 h-5" />
+                <div>
+                  <div className="font-semibold">PIX</div>
+                  <div className="text-sm text-gray-600">Pagamento instantâneo</div>
+                </div>
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2 p-3 border rounded-lg">
+              <RadioGroupItem value="card" id="card" />
+              <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
+                <CreditCard className="w-5 h-5" />
+                <div>
+                  <div className="font-semibold">Cartão na Entrega</div>
+                  <div className="text-sm text-gray-600">Débito ou crédito</div>
+                </div>
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2 p-3 border rounded-lg">
+              <RadioGroupItem value="cash" id="cash" />
+              <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer flex-1">
+                <Banknote className="w-5 h-5" />
+                <div>
+                  <div className="font-semibold">Dinheiro na Entrega</div>
+                  <div className="text-sm text-gray-600">Pagamento em espécie</div>
+                </div>
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {formData.paymentMethod === "pix" && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800 mb-2">
+                Após confirmar o pedido, você receberá o QR Code para pagamento via PIX.
+              </p>
+              <div className="flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                <span className="text-sm">Você poderá enviar o comprovante após o pagamento</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Observações (opcional)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={formData.notes}
+            onChange={(e) => handleInputChange("notes", e.target.value)}
+            placeholder="Alguma observação sobre seu pedido?"
+          />
+        </CardContent>
+      </Card>
+
+      <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+        {isLoading ? "Processando..." : "Confirmar Pedido"}
+      </Button>
+    </form>
   )
 }
