@@ -53,19 +53,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    // Mock login - In production, call your auth API
-    if (email === "admin@pizzaexpress.com" && password === "admin123") {
-      const mockUser = {
-        id: "1",
-        name: "Admin",
-        email: "admin@pizzaexpress.com",
-        role: "ADMIN" as const,
+    try {
+      console.log("Attempting login via API for:", email)
+
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error("Login API error:", data.error)
+        throw new Error(data.error || "Failed to login")
       }
-      setUser(mockUser)
-      localStorage.setItem("auth-token", "mock-token")
-      localStorage.setItem("user-data", JSON.stringify(mockUser))
-    } else {
-      throw new Error("Credenciais inválidas")
+
+      console.log("Login successful:", data.user)
+
+      // Create user object matching our interface
+      const authenticatedUser = {
+        id: data.user.id,
+        name: data.user.full_name || data.user.email.split("@")[0], // Use full_name or fallback to email prefix
+        email: data.user.email,
+        role: "CUSTOMER" as const, // Default role for regular users
+      }
+
+      setUser(authenticatedUser)
+      localStorage.setItem("auth-token", data.session.access_token)
+      localStorage.setItem("user-data", JSON.stringify(authenticatedUser))
+
+      console.log("User authenticated and stored:", authenticatedUser)
+    } catch (error) {
+      console.error("Login error:", error)
+      throw error
     }
   }
 
