@@ -57,18 +57,37 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
   })
 
   useEffect(() => {
-    loadAddresses()
+    console.log("SmartDeliverySection mounted with userId:", userId)
+    if (userId) {
+      loadAddresses()
+    } else {
+      console.log("No userId provided, showing form")
+      setViewMode("form")
+      setIsLoading(false)
+    }
   }, [userId])
 
   const loadAddresses = async () => {
     setIsLoading(true)
+    console.log("Loading addresses for userId:", userId)
+
     try {
       const response = await fetch(`/api/addresses?userId=${userId}`)
-      const data = await response.json()
+      console.log("API response status:", response.status)
 
-      if (data.addresses) {
+      if (!response.ok) {
+        console.error("Failed to fetch addresses:", response.status, response.statusText)
+        setViewMode("form")
+        return
+      }
+
+      const data = await response.json()
+      console.log("API response data:", data)
+
+      if (data.addresses && Array.isArray(data.addresses)) {
         setAddresses(data.addresses)
         const defaultAddr = data.addresses.find((addr: Address) => addr.is_default)
+        console.log("Default address found:", defaultAddr)
 
         if (defaultAddr) {
           setDefaultAddress(defaultAddr)
@@ -88,11 +107,14 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
             },
           })
         } else if (data.addresses.length > 0) {
+          console.log("No default address, showing list")
           setViewMode("list")
         } else {
+          console.log("No addresses found, showing form")
           setViewMode("form")
         }
       } else {
+        console.log("No addresses in response, showing form")
         setViewMode("form")
       }
     } catch (error) {
