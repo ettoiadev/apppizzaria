@@ -39,12 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("auth-token")
     const userData = localStorage.getItem("user-data")
 
+    console.log("AuthProvider: Checking stored auth data", { hasToken: !!token, hasUserData: !!userData })
+
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData)
+        console.log("AuthProvider: Restored user from localStorage", parsedUser)
         setUser(parsedUser)
       } catch (error) {
-        console.error("Error parsing user data:", error)
+        console.error("AuthProvider: Error parsing user data:", error)
         localStorage.removeItem("auth-token")
         localStorage.removeItem("user-data")
       }
@@ -54,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, requiredRole?: string) => {
     try {
-      console.log("Attempting login via API for:", email)
+      console.log("AuthProvider: Attempting login via API for:", email)
+      setIsLoading(true)
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -67,11 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (!response.ok) {
-        console.error("Login API error:", data.error)
+        console.error("AuthProvider: Login API error:", data.error)
         throw new Error(data.error || "Failed to login")
       }
 
-      console.log("Login successful:", data.user)
+      console.log("AuthProvider: Login successful:", data.user)
 
       // Get user profile to check role
       const profileResponse = await fetch("/api/admin/profile", {
@@ -99,26 +103,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: userRole as "CUSTOMER" | "ADMIN" | "KITCHEN" | "DELIVERY",
       }
 
+      console.log("AuthProvider: Setting authenticated user:", authenticatedUser)
       setUser(authenticatedUser)
       localStorage.setItem("auth-token", data.session.access_token)
       localStorage.setItem("user-data", JSON.stringify(authenticatedUser))
 
-      console.log("User authenticated and stored:", authenticatedUser)
+      console.log("AuthProvider: User authenticated and stored successfully")
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("AuthProvider: Login error:", error)
       throw error
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const logout = () => {
+    console.log("AuthProvider: Logging out user")
     setUser(null)
     localStorage.removeItem("auth-token")
     localStorage.removeItem("user-data")
   }
 
   const register = async (userData: any) => {
-    // Mock registration - In production, call your auth API
     try {
+      setIsLoading(true)
       // Simulate API call delay
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -137,6 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user-data", JSON.stringify(mockUser))
     } catch (error) {
       throw new Error("Erro ao criar conta")
+    } finally {
+      setIsLoading(false)
     }
   }
 

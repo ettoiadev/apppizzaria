@@ -34,7 +34,7 @@ interface AuthenticatedHeaderProps {
 export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { itemCount, total } = useCart()
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -51,6 +51,7 @@ export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
     router.push("/")
   }
 
+  // Definir itens de navegação sempre disponíveis
   const navigationItems = [
     { href: "/menu", label: "Cardápio", icon: UtensilsCrossed },
     { href: "/pedidos", label: "Pedidos", icon: Package },
@@ -63,6 +64,36 @@ export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
   // Get shortened name (first name only)
   const getShortName = (fullName: string) => {
     return fullName.split(" ")[0]
+  }
+
+  // Se ainda está carregando, mostrar skeleton
+  if (isLoading) {
+    return (
+      <header className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link href="/menu" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">PE</span>
+              </div>
+              <span className="font-bold text-xl text-gray-900">Pizza Express</span>
+            </Link>
+
+            {/* Loading skeleton */}
+            <div className="flex items-center space-x-4">
+              <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
+  // Se não há usuário, não renderizar (não deveria acontecer neste componente)
+  if (!user) {
+    return null
   }
 
   return (
@@ -101,14 +132,16 @@ export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-gray-600" />
                   </div>
+                  <span className="text-sm font-medium text-gray-900 max-w-[100px] truncate">
+                    {getShortName(user.name)}
+                  </span>
                   <ChevronDown className="w-4 h-4 text-gray-600" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-3 py-2 border-b">
-                  <p className="text-sm font-medium text-gray-900">
-                    Olá, {user?.name ? getShortName(user.name) : "Usuário"}
-                  </p>
+                  <p className="text-sm font-medium text-gray-900">Olá, {getShortName(user.name)}</p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
                 </div>
                 {navigationItems.map((item) => {
                   const Icon = item.icon
@@ -116,7 +149,7 @@ export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
                     <DropdownMenuItem key={item.href} asChild>
                       <Link
                         href={item.href}
-                        className={`flex items-center space-x-3 px-3 py-2 ${
+                        className={`flex items-center space-x-3 px-3 py-2 cursor-pointer ${
                           pathname === item.href ? "bg-primary/10 text-primary" : ""
                         }`}
                       >
@@ -127,7 +160,7 @@ export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
                   )
                 })}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 px-3 py-2">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 px-3 py-2 cursor-pointer">
                   <span>Sair</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -169,11 +202,9 @@ export function AuthenticatedHeader({ onCartClick }: AuthenticatedHeaderProps) {
                     <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                       <User className="w-5 h-5 text-gray-600" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Olá, {user?.name ? getShortName(user.name) : "Usuário"}
-                      </p>
-                      <p className="text-xs text-gray-500">Bem-vindo de volta!</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">Olá, {getShortName(user.name)}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
                   </div>
                 </div>
