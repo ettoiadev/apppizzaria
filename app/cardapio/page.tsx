@@ -1,74 +1,85 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Header } from "@/components/layout/header"
-import { CategoryFilter } from "@/components/menu/category-filter"
+import { useState, useEffect } from "react"
+import { AuthenticatedLayout } from "@/components/layout/authenticated-layout"
 import { ProductGrid } from "@/components/menu/product-grid"
-import { ProductModal } from "@/components/menu/product-modal"
+import { CategoryFilter } from "@/components/menu/category-filter"
 import { CartSidebar } from "@/components/cart/cart-sidebar"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import type { Product } from "@/types"
+import { useAuth } from "@/contexts/auth-context"
+import { useCart } from "@/contexts/cart-context"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { ShoppingBag, User } from "lucide-react"
 
 export default function MenuPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const { user } = useAuth()
+  const { itemCount } = useCart()
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      const response = await fetch("/api/products")
-      if (!response.ok) throw new Error("Erro ao carregar produtos")
-      return response.json()
-    },
-  })
+  // Mostrar mensagem de boas-vindas para usuários recém-logados
+  useEffect(() => {
+    if (user) {
+      const hasSeenWelcome = localStorage.getItem(`welcome-${user.id}`)
+      if (!hasSeenWelcome) {
+        setShowWelcome(true)
+        localStorage.setItem(`welcome-${user.id}`, "true")
+      }
+    }
+  }, [user])
 
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const response = await fetch("/api/categories")
-      if (!response.ok) throw new Error("Erro ao carregar categorias")
-      return response.json()
-    },
-  })
-
-  const filteredProducts = products?.filter(
-    (product: Product) => selectedCategory === "all" || product.categoryId === selectedCategory,
-  )
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    )
+  const handleDismissWelcome = () => {
+    setShowWelcome(false)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header onCartClick={() => setIsCartOpen(true)} />
+    <AuthenticatedLayout onCartClick={() => setIsCartOpen(true)}>
+      <div className="container mx-auto px-4 py-8">
+        {/* Mensagem de boas-vindas */}
+        {showWelcome && user && (
+          <Alert className="mb-6 border-green-200 bg-green-50">
+            <User className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <div className="flex items-center justify-between">
+                <span>
+                  Bem-vindo(a), <strong>{user.name.split(" ")[0]}</strong>! Explore nosso cardápio e faça seu pedido.
+                </span>
+                <Button variant="ghost" size="sm" onClick={handleDismissWelcome} className="text-green-600">
+                  ✕
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
-      <main className="container mx-auto px-4 py-8">
+        {/* Header da página */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Nosso Cardápio</h1>
-          <p className="text-gray-600">Escolha seus sabores favoritos</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Nosso Cardápio</h1>
+              <p className="text-gray-600">Escolha entre nossas deliciosas opções</p>
+            </div>
+            {itemCount > 0 && (
+              <Button onClick={() => setIsCartOpen(true)} className="md:hidden flex items-center gap-2" size="sm">
+                <ShoppingBag className="w-4 h-4" />
+                {itemCount} {itemCount === 1 ? "item" : "itens"}
+              </Button>
+            )}
+          </div>
         </div>
 
-        <CategoryFilter
-          categories={categories || []}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-        />
+        {/* Filtros de categoria */}
+        <div className="mb-8">
+          <CategoryFilter selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
+        </div>
 
-        <ProductGrid products={filteredProducts || []} onProductClick={setSelectedProduct} />
-      </main>
+        {/* Grid de produtos */}
+        <ProductGrid selectedCategory={selectedCategory} />
 
-      {selectedProduct && (
-        <ProductModal product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} />
-      )}
-
-      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-    </div>
+        {/* Sidebar do carrinho */}
+        <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      </div>
+    </AuthenticatedLayout>
   )
 }

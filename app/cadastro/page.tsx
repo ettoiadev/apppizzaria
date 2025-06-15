@@ -1,8 +1,8 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "@/components/layout/header"
 import { AddressInput } from "@/components/ui/address-input"
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -33,12 +33,23 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Mostrar mensagem de sucesso se vier da URL
+  React.useEffect(() => {
+    const message = searchParams.get("message")
+    if (message) {
+      setSuccess(message)
+    }
+  }, [searchParams])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     if (error) setError("")
+    if (success) setSuccess("")
   }
 
   const handleAddressChange = (address: any) => {
@@ -47,30 +58,52 @@ export default function RegisterPage() {
   }
 
   const validateForm = () => {
+    // Validação de nome
     if (!formData.name.trim()) {
       setError("Nome é obrigatório")
       return false
     }
+    if (formData.name.trim().length < 2) {
+      setError("Nome deve ter pelo menos 2 caracteres")
+      return false
+    }
+
+    // Validação de email
     if (!formData.email.trim()) {
       setError("Email é obrigatório")
       return false
     }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       setError("Email inválido")
       return false
     }
+
+    // Validação de telefone
     if (!formData.phone.trim()) {
       setError("Telefone é obrigatório")
       return false
     }
+    const phoneNumbers = formData.phone.replace(/\D/g, "")
+    if (phoneNumbers.length < 10 || phoneNumbers.length > 11) {
+      setError("Telefone deve ter 10 ou 11 dígitos")
+      return false
+    }
+
+    // Validação de senha
     if (formData.password.length < 6) {
       setError("Senha deve ter pelo menos 6 caracteres")
+      return false
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])|(?=.*\d)/.test(formData.password)) {
+      setError("Senha deve conter pelo menos uma letra maiúscula e uma minúscula, ou um número")
       return false
     }
     if (formData.password !== formData.confirmPassword) {
       setError("Senhas não coincidem")
       return false
     }
+
+    // Validação de endereço
     if (!formData.address.zipCode.trim()) {
       setError("CEP é obrigatório")
       return false
@@ -95,6 +128,7 @@ export default function RegisterPage() {
       setError("Número é obrigatório")
       return false
     }
+
     return true
   }
 
@@ -105,14 +139,17 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     setError("")
+    setSuccess("")
 
     try {
       // Prepare payload for API
       const payload = {
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        full_name: formData.name,
+        full_name: formData.name.trim(),
       }
+
+      console.log("Registering user with payload:", { ...payload, password: "[HIDDEN]" })
 
       // Call our registration API endpoint
       const response = await fetch("/api/auth/register", {
@@ -131,14 +168,29 @@ export default function RegisterPage() {
         return
       }
 
-      // Registration successful - redirect to login with success message
-      router.push("/login?message=Conta criada com sucesso! Faça login para continuar.")
+      console.log("Registration successful:", result)
+
+      // Show success message
+      setSuccess("Conta criada com sucesso! Redirecionando para o login...")
+
+      // Wait a bit to show success message, then redirect
+      setTimeout(() => {
+        router.push("/login?message=Conta criada com sucesso! Faça login para continuar.")
+      }, 2000)
     } catch (error) {
       console.error("Registration error:", error)
       setError("Erro ao criar conta. Verifique sua conexão e tente novamente.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, "")
+    if (numbers.length <= 10) {
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3")
+    }
+    return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
   }
 
   return (
@@ -164,7 +216,15 @@ export default function RegisterPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {error && (
                   <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">{success}</AlertDescription>
                   </Alert>
                 )}
 
@@ -180,6 +240,7 @@ export default function RegisterPage() {
                         onChange={(e) => handleInputChange("name", e.target.value)}
                         placeholder="Seu nome completo"
                         required
+                        disabled={isLoading}
                       />
                     </div>
 
@@ -189,9 +250,14 @@ export default function RegisterPage() {
                         id="phone"
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => handleInputChange("phone", e.target.value)}
+                        onChange={(e) => {
+                          const formatted = formatPhone(e.target.value)
+                          handleInputChange("phone", formatted)
+                        }}
                         placeholder="(11) 99999-9999"
                         required
+                        disabled={isLoading}
+                        maxLength={15}
                       />
                     </div>
                   </div>
@@ -205,6 +271,7 @@ export default function RegisterPage() {
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       placeholder="seu@email.com"
                       required
+                      disabled={isLoading}
                     />
                   </div>
 
@@ -219,6 +286,7 @@ export default function RegisterPage() {
                           onChange={(e) => handleInputChange("password", e.target.value)}
                           placeholder="Mínimo 6 caracteres"
                           required
+                          disabled={isLoading}
                         />
                         <Button
                           type="button"
@@ -226,6 +294,7 @@ export default function RegisterPage() {
                           size="sm"
                           className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowPassword(!showPassword)}
+                          disabled={isLoading}
                         >
                           {showPassword ? (
                             <EyeOff className="h-4 w-4 text-gray-400" />
@@ -234,6 +303,9 @@ export default function RegisterPage() {
                           )}
                         </Button>
                       </div>
+                      <p className="text-xs text-gray-500">
+                        Use pelo menos 6 caracteres com letras maiúsculas e minúsculas
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -246,6 +318,7 @@ export default function RegisterPage() {
                           onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                           placeholder="Digite a senha novamente"
                           required
+                          disabled={isLoading}
                         />
                         <Button
                           type="button"
@@ -253,6 +326,7 @@ export default function RegisterPage() {
                           size="sm"
                           className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          disabled={isLoading}
                         >
                           {showConfirmPassword ? (
                             <EyeOff className="h-4 w-4 text-gray-400" />

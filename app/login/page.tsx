@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -11,30 +11,91 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "@/components/layout/header"
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Mostrar mensagem de sucesso se vier da URL
+  useEffect(() => {
+    const message = searchParams.get("message")
+    if (message) {
+      setSuccess(message)
+    }
+  }, [searchParams])
+
+  // Redirecionar se já estiver logado
+  useEffect(() => {
+    if (user) {
+      router.push("/cardapio")
+    }
+  }, [user, router])
+
+  const validateForm = () => {
+    if (!email.trim()) {
+      setError("Email é obrigatório")
+      return false
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Email inválido")
+      return false
+    }
+    if (!password) {
+      setError("Senha é obrigatória")
+      return false
+    }
+    if (password.length < 6) {
+      setError("Senha deve ter pelo menos 6 caracteres")
+      return false
+    }
+    return true
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) return
+
     setIsLoading(true)
     setError("")
+    setSuccess("")
 
     try {
-      await login(email, password)
-      router.push("/cardapio")
-    } catch (error) {
-      setError("Email ou senha inválidos")
+      console.log("Attempting login for:", email)
+      await login(email.trim().toLowerCase(), password)
+
+      setSuccess("Login realizado com sucesso! Redirecionando...")
+
+      // Pequeno delay para mostrar mensagem de sucesso
+      setTimeout(() => {
+        router.push("/cardapio")
+      }, 1000)
+    } catch (error: any) {
+      console.error("Login error:", error)
+      setError(error.message || "Email ou senha inválidos")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleInputChange = (field: "email" | "password", value: string) => {
+    if (field === "email") {
+      setEmail(value)
+    } else {
+      setPassword(value)
+    }
+
+    // Limpar mensagens ao digitar
+    if (error) setError("")
+    if (success) setSuccess("")
   }
 
   return (
@@ -60,7 +121,15 @@ export default function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                   <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">{success}</AlertDescription>
                   </Alert>
                 )}
 
@@ -70,9 +139,11 @@ export default function LoginPage() {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="seu@email.com"
                     required
+                    disabled={isLoading}
+                    autoComplete="email"
                   />
                 </div>
 
@@ -83,9 +154,11 @@ export default function LoginPage() {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
                       placeholder="Sua senha"
                       required
+                      disabled={isLoading}
+                      autoComplete="current-password"
                     />
                     <Button
                       type="button"
@@ -93,6 +166,7 @@ export default function LoginPage() {
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLoading}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4 text-gray-400" />
