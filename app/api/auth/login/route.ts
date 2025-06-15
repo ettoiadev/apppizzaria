@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies })
 
     // Sign in the user
+    console.log("Attempting login for email:", email)
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -29,6 +30,8 @@ export async function POST(request: NextRequest) {
     // Handle auth errors
     if (authError) {
       console.error("Auth signin error:", authError)
+      console.error("Error message:", authError.message)
+      console.error("Error status:", authError.status)
 
       // Handle specific auth errors
       if (authError.message.includes("Invalid login credentials")) {
