@@ -10,12 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AdminRegisterModal } from "@/components/admin/auth/admin-register-modal"
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
 
@@ -25,13 +27,19 @@ export default function AdminLoginPage() {
     setError("")
 
     try {
-      await login(email, password)
+      await login(email, password, "admin")
       router.push("/admin")
-    } catch (error) {
-      setError("Email ou senha inválidos")
+    } catch (error: any) {
+      setError(error.message || "Email ou senha inválidos")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleRegisterSuccess = () => {
+    setShowRegisterModal(false)
+    setError("")
+    // Optionally show success message
   }
 
   return (
@@ -68,8 +76,25 @@ export default function AdminLoginPage() {
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
+
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowRegisterModal(true)}
+              disabled={isLoading}
+            >
+              Criar Conta de Administrador
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      <AdminRegisterModal
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onSuccess={handleRegisterSuccess}
+      />
     </div>
   )
 }

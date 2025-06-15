@@ -23,7 +23,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, requiredRole?: string) => Promise<void>
   logout: () => void
   register: (userData: any) => Promise<void>
 }
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, requiredRole?: string) => {
     try {
       console.log("Attempting login via API for:", email)
 
@@ -73,12 +73,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log("Login successful:", data.user)
 
+      // Get user profile to check role
+      const profileResponse = await fetch("/api/admin/profile", {
+        headers: {
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+      })
+
+      let userRole = "CUSTOMER"
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json()
+        userRole = profileData.role === "admin" ? "ADMIN" : "CUSTOMER"
+      }
+
+      // Check if required role matches
+      if (requiredRole === "admin" && userRole !== "ADMIN") {
+        throw new Error("Acesso negado. Apenas administradores podem acessar esta área.")
+      }
+
       // Create user object matching our interface
       const authenticatedUser = {
         id: data.user.id,
-        name: data.user.full_name || data.user.email.split("@")[0], // Use full_name or fallback to email prefix
+        name: data.user.full_name || data.user.email.split("@")[0],
         email: data.user.email,
-        role: "CUSTOMER" as const, // Default role for regular users
+        role: userRole as "CUSTOMER" | "ADMIN" | "KITCHEN" | "DELIVERY",
       }
 
       setUser(authenticatedUser)
