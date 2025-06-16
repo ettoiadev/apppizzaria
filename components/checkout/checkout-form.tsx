@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddressInput } from "@/components/ui/address-input" // Caminho corrigido
 import { SmartDeliverySection } from "@/components/checkout/smart-delivery-section"
-import { CreditCard, Banknote, QrCode, Upload } from "lucide-react"
+import { CreditCard, Banknote, QrCode, Upload } from 'lucide-react'
 
 interface CheckoutFormProps {
   onSubmit: (data: any) => void
@@ -39,7 +39,36 @@ export function CheckoutForm({ onSubmit, isLoading, userId }: CheckoutFormProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(formData)
+    
+    // Preparar dados completos do pedido
+    const orderData = {
+      // Dados do usuário
+      customerId: userId,
+      user_id: userId,
+      
+      // Dados de entrega
+      address: formData.address,
+      delivery_address: formData.address,
+      phone: formData.phone,
+      delivery_phone: formData.phone,
+      
+      // Dados de pagamento
+      paymentMethod: formData.paymentMethod,
+      payment_method: formData.paymentMethod,
+      
+      // Observações
+      notes: formData.notes,
+      delivery_instructions: formData.notes,
+      
+      // Dados do endereço estruturados
+      addressData: formData.addressData,
+      
+      // Nome do cliente
+      name: formData.name
+    }
+    
+    console.log("Submitting order data:", orderData)
+    onSubmit(orderData)
   }
 
   const handleInputChange = (field: string, value: string) => {

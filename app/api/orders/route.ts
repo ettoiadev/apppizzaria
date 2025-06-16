@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const offset = Number.parseInt(searchParams.get("offset") || "0")
 
+    console.log("GET /api/orders - Fetching orders with params:", { status, limit, offset })
+
     let query = supabase
       .from("orders")
       .select(`
@@ -32,11 +34,17 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching orders:", error)
-      return NextResponse.json({ error: "Erro ao buscar pedidos" }, { status: 500 })
+      return NextResponse.json({ error: "Erro ao buscar pedidos", details: error.message }, { status: 500 })
     }
 
+    console.log("Orders fetched successfully:", orders?.length || 0)
+
     // Calcular estatísticas dos pedidos
-    const { data: stats } = await supabase.from("orders").select("status, total")
+    const { data: stats, error: statsError } = await supabase.from("orders").select("status, total")
+
+    if (statsError) {
+      console.error("Error fetching stats:", statsError)
+    }
 
     const statistics = {
       total: stats?.length || 0,
@@ -59,7 +67,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Unexpected error:", error)
+    console.error("Unexpected error in GET /api/orders:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -69,68 +77,131 @@ export async function POST(request: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies })
     const body = await request.json()
 
-    const {
+    console.log("POST /api/orders - Received request body:", JSON.stringify(body, null, 2))
+
+    // Extrair e validar dados
+    const user_id = body.customerId || body.user_id
+    const items = body.items || []
+    const total = Number(body.total || 0)
+
+    // Dados de entrega
+    const delivery_address = body.address || body.delivery_address || ""
+    const delivery_phone = body.phone || body.delivery_phone || ""
+    const payment_method = body.paymentMethod || body.payment_method || "pix"
+    const delivery_instructions = body.notes || body.delivery_instructions || null
+
+    console.log("POST /api/orders - Processed data:", {
       user_id,
-      items,
+      items_count: items.length,
+      total,
       delivery_address,
       delivery_phone,
       payment_method,
       delivery_instructions,
-      subtotal,
-      delivery_fee = 0,
-      discount = 0,
-    } = body
+    })
 
-    const total = subtotal + delivery_fee - discount
+    // Validações obrigatórias
+    if (!user_id) {
+      console.error("Missing user_id")
+      return NextResponse.json({ error: "ID do usuário é obrigatório" }, { status: 400 })
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.error("Missing or invalid items:", items)
+      return NextResponse.json({ error: "Itens do pedido são obrigatórios" }, { status: 400 })
+    }
+
+    if (!delivery_address || !delivery_phone) {
+      console.error("Missing delivery data:", { delivery_address, delivery_phone })
+      return NextResponse.json({ error: "Endereço e telefone de entrega são obrigatórios" }, { status: 400 })
+    }
+
+    if (total <= 0) {
+      console.error("Invalid total:", total)
+      return NextResponse.json({ error: "Total do pedido deve ser maior que zero" }, { status: 400 })
+    }
+
+    // Calcular valores
+    const subtotal = total
+    const delivery_fee = 0
+    const discount = 0
+
+    // Preparar dados do pedido
+    const orderData = {
+      user_id,
+      status: "RECEIVED",
+      total,
+      subtotal,
+      delivery_fee,
+      discount,
+      payment_method,
+      payment_status: "PENDING",
+      delivery_address,
+      delivery_phone,
+      delivery_instructions,
+      estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+    }
+
+    console.log("POST /api/orders - Creating order with data:", orderData)
 
     // Criar o pedido
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        user_id,
-        status: "RECEIVED",
-        total,
-        subtotal,
-        delivery_fee,
-        discount,
-        payment_method,
-        delivery_address,
-        delivery_phone,
-        delivery_instructions,
-        estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
-      })
-      .select()
-      .single()
+    const { data: order, error: orderError } = await supabase.from("orders").insert(orderData).select().single()
 
     if (orderError) {
       console.error("Error creating order:", orderError)
-      return NextResponse.json({ error: "Erro ao criar pedido" }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: "Erro ao criar pedido",
+          details: orderError.message,
+          code: orderError.code,
+        },
+        { status: 500 },
+      )
     }
+
+    console.log("POST /api/orders - Order created successfully:", order.id)
 
     // Criar os itens do pedido
-    const orderItems = items.map((item: any) => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.quantity * item.unit_price,
-      size: item.size,
-      toppings: item.toppings,
-      special_instructions: item.special_instructions,
-    }))
+    if (items.length > 0) {
+      const orderItems = items.map((item: any) => {
+        const unit_price = Number(item.price || item.unit_price || 0)
+        const quantity = Number(item.quantity || 1)
 
-    const { error: itemsError } = await supabase.from("order_items").insert(orderItems)
+        return {
+          order_id: order.id,
+          product_id: item.product_id || item.id,
+          quantity,
+          unit_price,
+          total_price: quantity * unit_price,
+          size: item.size || null,
+          toppings: item.toppings || [],
+          special_instructions: item.special_instructions || null,
+        }
+      })
 
-    if (itemsError) {
-      console.error("Error creating order items:", itemsError)
-      // Reverter a criação do pedido
-      await supabase.from("orders").delete().eq("id", order.id)
-      return NextResponse.json({ error: "Erro ao criar itens do pedido" }, { status: 500 })
+      console.log("POST /api/orders - Creating order items:", orderItems)
+
+      const { error: itemsError } = await supabase.from("order_items").insert(orderItems)
+
+      if (itemsError) {
+        console.error("Error creating order items:", itemsError)
+        // Não reverter o pedido, apenas logar o erro
+        console.log("Order created but items failed to save - Order ID:", order.id)
+      } else {
+        console.log("POST /api/orders - Order items created successfully")
+      }
     }
 
+    console.log("POST /api/orders - Order process completed successfully")
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
-    console.error("Unexpected error:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    console.error("Unexpected error in POST /api/orders:", error)
+    return NextResponse.json(
+      {
+        error: "Erro interno do servidor",
+        details: error instanceof Error ? error.message : "Erro desconhecido",
+      },
+      { status: 500 },
+    )
   }
 }
