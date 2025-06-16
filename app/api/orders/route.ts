@@ -12,15 +12,12 @@ export async function GET(request: NextRequest) {
 
     console.log("GET /api/orders - Fetching orders with params:", { status, limit, offset })
 
+    // Query mais simples para evitar erros de relacionamento
     let query = supabase
       .from("orders")
       .select(`
         *,
-        profiles!orders_user_id_fkey(full_name, phone),
-        order_items(
-          *,
-          products(name, description, image)
-        )
+        profiles(full_name, phone)
       `)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1)
@@ -38,6 +35,26 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("Orders fetched successfully:", orders?.length || 0)
+
+    // Buscar itens dos pedidos separadamente para evitar problemas de join
+    const ordersWithItems = await Promise.all(
+      (orders || []).map(async (order) => {
+        const { data: orderItems, error: itemsError } = await supabase
+          .from("order_items")
+          .select(`
+            *,
+            products(name, description, image)
+          `)
+          .eq("order_id", order.id)
+
+        if (itemsError) {
+          console.error("Error fetching order items for order", order.id, itemsError)
+          return { ...order, order_items: [] }
+        }
+
+        return { ...order, order_items: orderItems || [] }
+      }),
+    )
 
     // Calcular estatísticas dos pedidos
     const { data: stats, error: statsError } = await supabase.from("orders").select("status, total")
@@ -58,7 +75,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      orders: orders || [],
+      orders: ordersWithItems,
       statistics,
       pagination: {
         limit,

@@ -7,106 +7,115 @@ import { CheckoutForm } from "@/components/checkout/checkout-form"
 import { OrderSummary } from "@/components/checkout/order-summary"
 import { useCart } from "@/contexts/cart-context"
 import { useAuth } from "@/contexts/auth-context"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, total, clearCart } = useCart()
   const { user } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  console.log("CheckoutPage - Current user:", user)
+  console.log("CheckoutPage - Cart items:", items)
+  console.log("CheckoutPage - Cart total:", total)
 
   const handleOrderSubmit = async (orderData: any) => {
-    console.log("CheckoutPage: Starting order submission")
-    console.log("CheckoutPage: Order data received:", orderData)
-    console.log("CheckoutPage: Cart items:", items)
-    console.log("CheckoutPage: Cart total:", total)
-    console.log("CheckoutPage: User:", user)
-
-    setIsLoading(true)
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para fazer um pedido",
+        variant: "destructive",
+      })
+      router.push("/login")
+      return
+    }
 
     try {
-      // Preparar dados completos do pedido
-      const completeOrderData = {
-        ...orderData,
-        items,
-        total,
-        customerId: user?.id,
-        user_id: user?.id,
+      setIsSubmitting(true)
+      console.log("CheckoutPage - Submitting order:", orderData)
+
+      // Preparar dados do pedido
+      const orderPayload = {
+        customerId: user.id,
+        user_id: user.id,
+        items: items.map((item) => ({
+          id: item.id,
+          product_id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          unit_price: item.price,
+          size: item.size,
+          toppings: item.toppings || [],
+          special_instructions: item.special_instructions,
+        })),
+        total: total,
+        address: orderData.address,
+        delivery_address: orderData.address,
+        phone: orderData.phone,
+        delivery_phone: orderData.phone,
+        paymentMethod: orderData.paymentMethod,
+        payment_method: orderData.paymentMethod,
+        notes: orderData.notes,
+        delivery_instructions: orderData.notes,
       }
 
-      console.log("CheckoutPage: Complete order data:", completeOrderData)
+      console.log("CheckoutPage - Final order payload:", orderPayload)
 
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(completeOrderData),
+        body: JSON.stringify(orderPayload),
       })
 
-      console.log("CheckoutPage: API response status:", response.status)
+      const result = await response.json()
+      console.log("CheckoutPage - Order response:", result)
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error("CheckoutPage: API error response:", errorData)
-
-        toast({
-          title: "Erro ao criar pedido",
-          description: errorData.details || errorData.error || "Erro desconhecido",
-          variant: "destructive",
-        })
-
-        throw new Error(errorData.error || "Erro ao criar pedido")
+        throw new Error(result.error || "Erro ao criar pedido")
       }
 
-      const order = await response.json()
-      console.log("CheckoutPage: Order created successfully:", order)
+      // Sucesso - limpar carrinho e redirecionar
+      clearCart()
 
       toast({
-        title: "Pedido criado com sucesso!",
-        description: `Pedido #${order.id.slice(-8)} foi criado. Você será redirecionado.`,
+        title: "Pedido realizado com sucesso!",
+        description: `Seu pedido #${result.id} foi criado. Você será redirecionado para acompanhar o status.`,
       })
 
-      clearCart()
-      router.push(`/pedido/${order.id}`)
+      // Redirecionar para página de acompanhamento
+      setTimeout(() => {
+        router.push(`/pedido/${result.id}`)
+      }, 2000)
     } catch (error) {
-      console.error("CheckoutPage: Error in order submission:", error)
-
+      console.error("Erro ao finalizar pedido:", error)
       toast({
         title: "Erro ao finalizar pedido",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        description: error instanceof Error ? error.message : "Tente novamente em alguns instantes",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
-  // Verificar se o usuário está autenticado
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Faça login para continuar</h1>
-          <p className="text-gray-600 mb-8">Você precisa estar logado para finalizar o pedido</p>
-          <Button onClick={() => router.push("/login")}>Fazer Login</Button>
-        </div>
-      </div>
-    )
-  }
-
+  // Redirecionar se não houver itens no carrinho
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Seu carrinho está vazio</h1>
-          <p className="text-gray-600 mb-8">Adicione alguns itens ao seu carrinho para continuar</p>
-          <Button onClick={() => router.push("/cardapio")}>Ver Cardápio</Button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Carrinho vazio</h1>
+          <p className="text-gray-600 mb-8">Adicione alguns itens ao seu carrinho antes de finalizar o pedido.</p>
+          <button
+            onClick={() => router.push("/cardapio")}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Ver Cardápio
+          </button>
         </div>
       </div>
     )
@@ -117,17 +126,16 @@ export default function CheckoutPage() {
       <Header />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Finalizar Pedido</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Finalizar Pedido</h1>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          <CheckoutForm onSubmit={handleOrderSubmit} isLoading={isLoading} userId={user?.id} />
-          <OrderSummary items={items} total={total} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
+            <CheckoutForm onSubmit={handleOrderSubmit} isSubmitting={isSubmitting} />
+          </div>
+
+          <div>
+            <OrderSummary />
+          </div>
         </div>
       </main>
     </div>
