@@ -1,25 +1,39 @@
+import winston from 'winston';
+
+// Configuração do logger Winston
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`)
+  ),
+  transports: [
+    new winston.transports.Console(),
+  ],
+});
+
 // Utilitário para debug centralizado
 export const debugLog = {
   product: {
     saving: (action: string, data?: any) => {
-      console.log(`🛍️ [PRODUTO] ${action}`, data ? data : "")
+      logger.info(`🛍️ [PRODUTO] ${action}`, data ? data : "")
     },
     success: (action: string, data?: any) => {
-      console.log(`✅ [PRODUTO] ${action}`, data ? data : "")
+      logger.info(`✅ [PRODUTO] ${action}`, data ? data : "")
     },
     error: (action: string, error: any) => {
-      console.error(`❌ [PRODUTO] ${action}:`, error)
+      logger.error(`❌ [PRODUTO] ${action}:`, error)
     },
   },
   api: {
     request: (method: string, url: string, data?: any) => {
-      console.log(`🌐 [API] ${method} ${url}`, data ? data : "")
+      logger.info(`🌐 [API] ${method} ${url}`, data ? data : "")
     },
     response: (status: number, data?: any) => {
-      console.log(`📡 [API] Response ${status}`, data ? data : "")
+      logger.info(`📡 [API] Response ${status}`, data ? data : "")
     },
     error: (error: any) => {
-      console.error(`❌ [API] Error:`, error)
+      logger.error(`❌ [API] Error:`, error)
     },
   },
 }
