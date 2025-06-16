@@ -20,6 +20,7 @@ export function AuthenticatedLayout({ children, onCartClick }: AuthenticatedLayo
   useEffect(() => {
     // Redirect non-authenticated users to home
     if (!user && !isLoading) {
+      console.log("AuthenticatedLayout: User not authenticated, redirecting to home")
       router.push("/")
     }
   }, [user, isLoading, router])
@@ -35,7 +36,11 @@ export function AuthenticatedLayout({ children, onCartClick }: AuthenticatedLayo
 
   // Don't render if user is not authenticated
   if (!user) {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
   }
 
   return (

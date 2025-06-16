@@ -9,13 +9,18 @@ interface CategoryFilterProps {
   onCategoryChange: (categoryId: string) => void
 }
 
-export function CategoryFilter({ categories, selectedCategory, onCategoryChange }: CategoryFilterProps) {
+export function CategoryFilter({ categories = [], selectedCategory, onCategoryChange }: CategoryFilterProps) {
+  // Verificação de segurança
+  if (!Array.isArray(categories)) {
+    return null
+  }
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-4 mb-8">
+    <div className="flex flex-wrap gap-2 mb-6">
       <Button
         variant={selectedCategory === "all" ? "default" : "outline"}
         onClick={() => onCategoryChange("all")}
-        className="whitespace-nowrap"
+        size="sm"
       >
         Todos
       </Button>
@@ -24,7 +29,7 @@ export function CategoryFilter({ categories, selectedCategory, onCategoryChange 
           key={category.id}
           variant={selectedCategory === category.id ? "default" : "outline"}
           onClick={() => onCategoryChange(category.id)}
-          className="whitespace-nowrap"
+          size="sm"
         >
           {category.name}
         </Button>

@@ -1,22 +1,58 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout"
 import { ProductGrid } from "@/components/menu/product-grid"
 import { CategoryFilter } from "@/components/menu/category-filter"
 import { CartSidebar } from "@/components/cart/cart-sidebar"
+import { ProductModal } from "@/components/menu/product-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { useCart } from "@/contexts/cart-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ShoppingBag, User } from "lucide-react"
+import type { Product } from "@/types"
 
 export default function MenuPage() {
   const { user } = useAuth()
   const { itemCount } = useCart()
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
+
+  // Query para produtos
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    error: productsError,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const response = await fetch("/api/products")
+      if (!response.ok) throw new Error("Erro ao carregar produtos")
+      const data = await response.json()
+      return Array.isArray(data) ? data : []
+    },
+  })
+
+  // Query para categorias
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const response = await fetch("/api/categories")
+      if (!response.ok) throw new Error("Erro ao carregar categorias")
+      const data = await response.json()
+      return Array.isArray(data) ? data : []
+    },
+  })
+
+  // Filtrar produtos por categoria
+  const filteredProducts = products.filter(
+    (product: Product) => selectedCategory === "all" || product.categoryId === selectedCategory,
+  )
 
   // Mostrar mensagem de boas-vindas para usuários recém-logados
   useEffect(() => {
@@ -31,6 +67,32 @@ export default function MenuPage() {
 
   const handleDismissWelcome = () => {
     setShowWelcome(false)
+  }
+
+  // Loading state
+  if (productsLoading) {
+    return (
+      <AuthenticatedLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      </AuthenticatedLayout>
+    )
+  }
+
+  // Error state
+  if (productsError) {
+    return (
+      <AuthenticatedLayout>
+        <div className="container mx-auto px-4 py-8">
+          <Alert className="border-red-200 bg-red-50">
+            <AlertDescription className="text-red-800">
+              Erro ao carregar o cardápio. Tente novamente mais tarde.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </AuthenticatedLayout>
+    )
   }
 
   return (
@@ -71,11 +133,20 @@ export default function MenuPage() {
 
         {/* Filtros de categoria */}
         <div className="mb-8">
-          <CategoryFilter selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
+          <CategoryFilter
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+          />
         </div>
 
         {/* Grid de produtos */}
-        <ProductGrid selectedCategory={selectedCategory} />
+        <ProductGrid products={filteredProducts} onProductClick={setSelectedProduct} />
+
+        {/* Modal do produto */}
+        {selectedProduct && (
+          <ProductModal product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} />
+        )}
 
         {/* Sidebar do carrinho */}
         <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
