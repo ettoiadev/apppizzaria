@@ -1,13 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  let transactionStarted = false
-  
   try {
     console.log("=== POST /api/orders/manual - INÍCIO ===")
+    
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
     const body = await request.json()
     console.log("POST /api/orders/manual - Request body:", JSON.stringify(body, null, 2))
@@ -75,183 +78,138 @@ export async function POST(request: NextRequest) {
     // Usar ID do cliente real
     const userId = customerId
 
-    // Iniciar transação
-    console.log("Iniciando transação para pedido manual...")
-    await query("BEGIN")
-    transactionStarted = true
+    // Verificar se o cliente existe
+    const { data: customer, error: customerError } = await supabase
+      .from('profiles')
+      .select('id, full_name, phone')
+      .eq('id', userId)
+      .eq('role', 'customer')
+      .single()
 
-    try {
-      // Verificar se o cliente existe
-      const customerCheck = await query(
-        "SELECT id, full_name, phone FROM profiles WHERE id = $1 AND role = 'customer'",
-        [userId]
-      )
-
-      if (customerCheck.rows.length === 0) {
-        throw new Error("Cliente não encontrado ou inválido")
-      }
-
-      const customer = customerCheck.rows[0]
-      console.log("Cliente encontrado:", customer.full_name)
-
-      // Criar pedido manual
-      console.log("Criando pedido manual...")
-      const orderResult = await query(
-        `INSERT INTO orders (
-          user_id, status, total, subtotal, delivery_fee, discount,
-          payment_method, payment_status, delivery_address, delivery_phone,
-          delivery_instructions, estimated_delivery_time, customer_name,
-          created_at, updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
-        RETURNING *`,
-        [
-          userId,
-          "RECEIVED",
-          total,
-          subtotal,
-          delivery_fee,
-          0, // discount
-          paymentMethod,
-          "PENDING",
-          finalDeliveryAddress,
-          customerPhone,
-          notes || null,
-          new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45 minutos
-          customerName
-        ]
-      )
-
-      if (!orderResult.rows || orderResult.rows.length === 0) {
-        throw new Error("Falha ao criar pedido manual")
-      }
-
-      const order = orderResult.rows[0]
-      console.log("Pedido manual criado com sucesso! ID:", order.id)
-
-      // Inserir itens do pedido
-      console.log(`Inserindo ${items.length} itens no pedido manual...`)
-      
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i]
-        const unit_price = Number(item.price || item.unit_price || 0)
-        const quantity = Number(item.quantity || 1)
-        
-        // Limpar product_id
-        let product_id = item.product_id || item.id
-        if (product_id) {
-          product_id = product_id.toString().replace(/--+$/, '').trim()
-        }
-
-        console.log(`Inserindo item ${i + 1}:`, {
-          product_id,
-          name: item.name,
-          quantity,
-          unit_price,
-          size: item.size,
-          toppings: item.toppings,
-          notes: item.notes,
-          isHalfAndHalf: item.isHalfAndHalf,
-          halfAndHalf: item.halfAndHalf
-        })
-
-        if (!product_id) {
-          throw new Error(`Item ${i + 1} não possui ID do produto`)
-        }
-
-        // Validar UUID
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (!uuidRegex.test(product_id)) {
-          throw new Error(`Item ${i + 1} possui ID de produto inválido: ${product_id}`)
-        }
-
-        try {
-          await query(
-            `INSERT INTO order_items (
-              order_id, product_id, name, quantity, unit_price, total_price,
-              size, toppings, special_instructions, half_and_half
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [
-              order.id,
-              product_id,
-              item.name || '',
-              quantity,
-              unit_price,
-              quantity * unit_price,
-              item.size || null,
-              JSON.stringify(item.toppings || []),
-              item.notes || null,
-              item.halfAndHalf ? JSON.stringify(item.halfAndHalf) : null
-            ]
-          )
-          console.log(`Item ${i + 1} inserido com sucesso`)
-        } catch (insertError: any) {
-          console.error(`Erro ao inserir item ${i + 1}:`, insertError)
-          throw new Error(`Falha ao inserir item ${i + 1}: ${insertError.message}`)
-        }
-      }
-
-      // Commit da transação
-      console.log("Fazendo COMMIT da transação...")
-      await query("COMMIT")
-      transactionStarted = false
-      console.log("Pedido manual criado com sucesso!")
-
-      // Retornar resposta de sucesso
-      return NextResponse.json({
-        id: order.id,
-        status: order.status,
-        total: order.total,
-        orderType: orderType,
-        customerName: customerName,
-        customerPhone: customerPhone,
-        customerId: userId,
-        deliveryAddress: finalDeliveryAddress,
-        created_at: order.created_at,
-        message: `Pedido manual ${orderType === 'balcao' ? '(Balcão)' : '(Telefone)'} criado com sucesso!`
-      })
-      
-    } catch (innerError: any) {
-      console.error("Erro durante criação do pedido manual:", innerError)
-      
-      if (transactionStarted) {
-        console.log("Fazendo ROLLBACK da transação...")
-        await query("ROLLBACK")
-      }
-      
-      throw innerError
+    if (customerError || !customer) {
+      throw new Error("Cliente não encontrado ou inválido")
     }
+
+    console.log("Cliente encontrado:", customer.full_name)
+
+    // Criar pedido manual
+    console.log("Criando pedido manual...")
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: userId,
+        status: "RECEIVED",
+        total,
+        subtotal,
+        delivery_fee,
+        discount: 0,
+        payment_method: paymentMethod,
+        payment_status: "PENDING",
+        delivery_address: finalDeliveryAddress,
+        delivery_phone: customerPhone,
+        delivery_instructions: notes || null,
+        estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+        customer_name: customerName
+      })
+      .select()
+      .single()
+
+    if (orderError || !order) {
+      throw new Error("Falha ao criar pedido manual")
+    }
+
+    console.log("Pedido manual criado com sucesso! ID:", order.id)
+
+    // Inserir itens do pedido
+    console.log(`Inserindo ${items.length} itens no pedido manual...`)
+    
+    const orderItems = []
+    
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      const unit_price = Number(item.price || item.unit_price || 0)
+      const quantity = Number(item.quantity || 1)
+      
+      // Limpar product_id
+      let product_id = item.product_id || item.id
+      if (product_id) {
+        product_id = product_id.toString().replace(/--+$/, '').trim()
+      }
+
+      console.log(`Preparando item ${i + 1}:`, {
+        product_id,
+        name: item.name,
+        quantity,
+        unit_price,
+        size: item.size,
+        toppings: item.toppings,
+        notes: item.notes,
+        isHalfAndHalf: item.isHalfAndHalf,
+        halfAndHalf: item.halfAndHalf
+      })
+
+      if (!product_id) {
+        throw new Error(`Item ${i + 1} não possui ID do produto`)
+      }
+
+      // Validar UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(product_id)) {
+        throw new Error(`Item ${i + 1} possui ID de produto inválido: ${product_id}`)
+      }
+
+      orderItems.push({
+        order_id: order.id,
+        product_id,
+        name: item.name || '',
+        quantity,
+        unit_price,
+        total_price: quantity * unit_price,
+        size: item.size || null,
+        toppings: JSON.stringify(item.toppings || []),
+        special_instructions: item.notes || null,
+        half_and_half: item.halfAndHalf ? JSON.stringify(item.halfAndHalf) : null
+      })
+    }
+
+    // Inserir todos os itens de uma vez
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems)
+
+    if (itemsError) {
+      throw new Error(`Falha ao inserir itens do pedido: ${itemsError.message}`)
+    }
+
+    console.log(`${items.length} itens inseridos com sucesso`)
+
+    console.log("Pedido manual criado com sucesso!")
+
+    // Retornar resposta de sucesso
+    return NextResponse.json({
+      id: order.id,
+      status: order.status,
+      total: order.total,
+      orderType: orderType,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      customerId: userId,
+      deliveryAddress: finalDeliveryAddress,
+      created_at: order.created_at,
+      message: `Pedido manual ${orderType === 'balcao' ? '(Balcão)' : '(Telefone)'} criado com sucesso!`
+    })
   } catch (error: any) {
     console.error("=== ERRO COMPLETO NO POST /api/orders/manual ===")
     console.error("Tipo:", error.constructor.name)
     console.error("Mensagem:", error.message)
     console.error("Stack:", error.stack)
     
-    if (error.code) {
-      console.error("Código PostgreSQL:", error.code)
-      console.error("Detalhe:", error.detail)
-      console.error("Hint:", error.hint)
-    }
-    
-    // Fazer rollback se necessário
-    if (transactionStarted) {
-      try {
-        await query("ROLLBACK")
-      } catch (rollbackError) {
-        console.error("Erro ao fazer rollback:", rollbackError)
-      }
-    }
-    
     return NextResponse.json({ 
       error: error.message || "Erro interno do servidor ao criar pedido manual",
       details: {
         type: error.constructor.name,
-        code: error.code,
-        message: error.message,
-        hint: error.hint,
-        detail: error.detail
+        message: error.message
       }
     }, { status: 500 })
   }
-} 
+}

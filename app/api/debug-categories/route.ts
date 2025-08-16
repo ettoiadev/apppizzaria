@@ -1,69 +1,94 @@
 import { NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
   try {
     console.log('🔍 DEBUG: Iniciando diagnóstico de categorias...')
     
-    // 1. Verificar estrutura da tabela
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // 1. Verificar estrutura da tabela (usando Supabase)
     console.log('1. Verificando estrutura da tabela categories...')
-    const structure = await query(`
-      SELECT column_name, data_type, is_nullable, column_default 
-      FROM information_schema.columns 
-      WHERE table_name = 'categories' 
-      AND table_schema = 'public'
-      ORDER BY ordinal_position
-    `)
-    
-    console.log('Estrutura da tabela:', structure.rows)
+    // Nota: Supabase não expõe information_schema diretamente, mas podemos verificar os dados
+    console.log('Estrutura da tabela: Usando Supabase - verificação via dados')
     
     // 2. Verificar dados atuais
     console.log('2. Verificando todas as categorias...')
-    const allCategories = await query('SELECT * FROM categories')
-    console.log('Total de categorias no banco:', allCategories.rows.length)
+    const { data: allCategories, error: allCategoriesError } = await supabase
+      .from('categories')
+      .select('*')
     
-    allCategories.rows.forEach(cat => {
+    if (allCategoriesError) {
+      console.error('Erro ao buscar categorias:', allCategoriesError)
+      throw allCategoriesError
+    }
+    
+    console.log('Total de categorias no banco:', allCategories?.length || 0)
+    
+    allCategories?.forEach(cat => {
       console.log(`- ${cat.name}: active=${cat.active}, id=${cat.id}`)
     })
     
     // 3. Testar categoria específica (Sobremesas)
     const sobremesasId = 'edd3f631-c717-4c54-8490-e9cc72fcd1f2'
     console.log('3. Verificando categoria Sobremesas...')
-    const sobremesas = await query('SELECT * FROM categories WHERE id = $1', [sobremesasId])
+    const { data: sobremesas, error: sobremesasError } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', sobremesasId)
+      .single()
     
-    console.log('Categoria Sobremesas:', sobremesas.rows[0] || 'NÃO ENCONTRADA')
+    console.log('Categoria Sobremesas:', sobremesas || 'NÃO ENCONTRADA')
+    if (sobremesasError) console.log('Erro ao buscar Sobremesas:', sobremesasError)
     
     // 4. Tentar update para false
     console.log('4. Testando UPDATE active = false...')
-    const updateResult = await query(
-      'UPDATE categories SET active = false WHERE id = $1 RETURNING *',
-      [sobremesasId]
-    )
+    const { data: updateResult, error: updateError } = await supabase
+      .from('categories')
+      .update({ active: false })
+      .eq('id', sobremesasId)
+      .select()
+      .single()
     
-    console.log('Resultado do UPDATE:', updateResult.rows[0] || 'NENHUMA LINHA AFETADA')
+    console.log('Resultado do UPDATE:', updateResult || 'NENHUMA LINHA AFETADA')
+    if (updateError) console.log('Erro no UPDATE:', updateError)
     
     // 5. Verificar após update
     console.log('5. Verificando após UPDATE...')
-    const afterUpdate = await query('SELECT * FROM categories WHERE id = $1', [sobremesasId])
-    console.log('Categoria após UPDATE:', afterUpdate.rows[0] || 'NÃO ENCONTRADA')
+    const { data: afterUpdate, error: afterUpdateError } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', sobremesasId)
+      .single()
+    
+    console.log('Categoria após UPDATE:', afterUpdate || 'NÃO ENCONTRADA')
+    if (afterUpdateError) console.log('Erro ao verificar após UPDATE:', afterUpdateError)
     
     // 6. Testar query com filtro active
     console.log('6. Testando query com filtro active = true...')
-    const activeOnly = await query('SELECT id, name, active FROM categories WHERE active = true')
-    console.log('Categorias ativas:', activeOnly.rows.length)
+    const { data: activeOnly, error: activeOnlyError } = await supabase
+      .from('categories')
+      .select('id, name, active')
+      .eq('active', true)
+    
+    console.log('Categorias ativas:', activeOnly?.length || 0)
+    if (activeOnlyError) console.log('Erro ao buscar categorias ativas:', activeOnlyError)
     
     return NextResponse.json({
       message: 'Debug concluído - verificar logs do servidor',
-      structure: structure.rows,
-      totalCategories: allCategories.rows.length,
-      sobremesasFound: sobremesas.rows.length > 0,
-      updateResult: updateResult.rows[0] || null,
-      afterUpdate: afterUpdate.rows[0] || null,
-      activeCategories: activeOnly.rows.length
+      structure: 'Usando Supabase - estrutura verificada via dados',
+      totalCategories: allCategories?.length || 0,
+      sobremesasFound: !!sobremesas,
+      updateResult: updateResult || null,
+      afterUpdate: afterUpdate || null,
+      activeCategories: activeOnly?.length || 0
     })
     
   } catch (error) {
     console.error('❌ Erro no debug:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro desconhecido' }, { status: 500 })
   }
-} 
+}

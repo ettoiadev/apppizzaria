@@ -1,31 +1,53 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 // GET - Buscar dados de um usuário específico
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     console.log("GET /api/users - Buscando usuário:", params.id)
 
-    const result = await query(
-      `SELECT 
-        u.id,
-        u.email,
-        p.full_name as name,
-        p.phone,
-        p.role,
-        p.email_verified,
-        p.profile_completed
-      FROM auth.users u 
-      LEFT JOIN profiles p ON u.id = p.id 
-      WHERE u.id = $1`,
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (result.rows.length === 0) {
+    // Buscar dados do usuário e perfil usando Supabase
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        phone,
+        role,
+        email_verified,
+        profile_completed
+      `)
+      .eq('id', params.id)
+      .single()
+
+    if (error || !profile) {
+      console.error('Erro ao buscar perfil:', error)
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
-    const userData = result.rows[0]
+    // Buscar email do auth.users
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(params.id)
+    
+    if (authError || !authUser.user) {
+      console.error('Erro ao buscar dados de autenticação:', authError)
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
+    }
+
+    const userData = {
+      id: profile.id,
+      email: authUser.user.email,
+      name: profile.full_name,
+      phone: profile.phone,
+      role: profile.role,
+      email_verified: profile.email_verified,
+      profile_completed: profile.profile_completed
+    }
+    
     console.log("Dados do usuário encontrados:", userData)
 
     return NextResponse.json({ 
@@ -80,42 +102,46 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     
     console.log("Dados a serem atualizados:", { name, email, phone: phone, cleanPhone })
 
-    // Verificar se o usuário existe
-    const userCheck = await query(
-      "SELECT id FROM auth.users WHERE id = $1",
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (userCheck.rows.length === 0) {
+    // Verificar se o usuário existe
+    const { data: existingUser, error: userCheckError } = await supabase.auth.admin.getUserById(params.id)
+    
+    if (userCheckError || !existingUser.user) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
-    // Iniciar transação
-    await query("BEGIN")
-
     try {
       // Atualizar email na tabela auth.users se necessário
-      const currentUserResult = await query(
-        "SELECT email FROM auth.users WHERE id = $1",
-        [params.id]
-      )
-      
-      if (currentUserResult.rows[0]?.email !== email) {
-        await query(
-          "UPDATE auth.users SET email = $1, updated_at = NOW() WHERE id = $2",
-          [email, params.id]
+      if (existingUser.user.email !== email) {
+        const { error: emailUpdateError } = await supabase.auth.admin.updateUserById(
+          params.id,
+          { email }
         )
+        
+        if (emailUpdateError) {
+          console.error('Erro ao atualizar email:', emailUpdateError)
+          throw emailUpdateError
+        }
       }
 
       // Atualizar dados na tabela profiles (salvar telefone limpo - apenas números)
-      await query(
-        `UPDATE profiles 
-         SET full_name = $1, phone = $2, updated_at = NOW() 
-         WHERE id = $3`,
-        [name.trim(), cleanPhone, params.id]
-      )
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: name.trim(),
+          phone: cleanPhone,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', params.id)
 
-      await query("COMMIT")
+      if (profileUpdateError) {
+        console.error('Erro ao atualizar perfil:', profileUpdateError)
+        throw profileUpdateError
+      }
 
       console.log("Usuário atualizado com sucesso:", params.id)
 
@@ -129,7 +155,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
       })
     } catch (transactionError) {
-      await query("ROLLBACK")
+      console.error('Erro na atualização:', transactionError)
       throw transactionError
     }
   } catch (error) {

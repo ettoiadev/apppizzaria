@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
 import { JwtPayload } from "jsonwebtoken"
 
@@ -13,43 +13,24 @@ interface CustomJwtPayload extends JwtPayload {
 // GET - Buscar conteúdo da página Sobre
 export async function GET() {
   try {
-    // First check if table exists and get structure
-    const checkTable = await query(`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
-      WHERE table_name = 'about_content' 
-      AND column_name = 'id'
-    `)
-
-    let whereClause = ''
-    let queryParams: any[] = []
-
-    if (checkTable.rows.length > 0) {
-      const idType = checkTable.rows[0].data_type
-      if (idType === 'uuid') {
-        // Try to find any record first, then use a default UUID
-        const anyRecord = await query('SELECT id FROM about_content LIMIT 1')
-        if (anyRecord.rows.length > 0) {
-          whereClause = 'WHERE id = $1'
-          queryParams = [anyRecord.rows[0].id]
-        } else {
-          // No records exist, we'll create one
-          whereClause = 'WHERE 1=0' // This will return empty result and trigger creation
-        }
-      } else {
-        whereClause = 'WHERE id = 1'
-      }
-    } else {
-      // Table doesn't exist or column doesn't exist, handle gracefully
-      return NextResponse.json({ error: "Tabela about_content não encontrada" }, { status: 500 })
-    }
-
-    const result = await query(
-      `SELECT * FROM about_content ${whereClause}`,
-      queryParams
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (result.rows.length === 0) {
+    // Buscar qualquer registro de about_content
+    const { data: result, error } = await supabase
+      .from('about_content')
+      .select('*')
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('[ABOUT] Erro ao buscar conteúdo:', error)
+      return NextResponse.json({ error: "Erro ao buscar conteúdo" }, { status: 500 })
+    }
+
+    if (!result) {
       const defaultContent = {
         hero: {
           title: "Sobre a Pizza Delivery",
@@ -92,24 +73,18 @@ export async function GET() {
         ]
       }
 
-      try {
-        const insertResult = await query(
-          `
-          INSERT INTO about_content 
-          (hero, story, values, team)
-          VALUES ($1, $2, $3, $4)
-          RETURNING *
-          `,
-          [
-            JSON.stringify(defaultContent.hero),
-            JSON.stringify(defaultContent.story),
-            JSON.stringify(defaultContent.values),
-            JSON.stringify(defaultContent.team)
-          ]
-        )
+      const { data: insertResult, error: insertError } = await supabase
+        .from('about_content')
+        .insert({
+          hero: defaultContent.hero,
+          story: defaultContent.story,
+          values: defaultContent.values,
+          team: defaultContent.team
+        })
+        .select()
+        .single()
 
-        return NextResponse.json({ content: insertResult.rows[0] })
-      } catch (insertError) {
+      if (insertError) {
         // If insert fails, return default content without saving
         return NextResponse.json({ content: { 
           id: 'default',
@@ -119,9 +94,11 @@ export async function GET() {
           team: defaultContent.team
         }})
       }
+
+      return NextResponse.json({ content: insertResult })
     }
 
-    return NextResponse.json({ content: result.rows[0] })
+    return NextResponse.json({ content: result })
   } catch (error) {
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
@@ -171,48 +148,58 @@ export async function PUT(request: Request) {
       )
     }
 
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     // Check if any record exists first
-    const existing = await query('SELECT id FROM about_content LIMIT 1')
+    const { data: existing } = await supabase
+      .from('about_content')
+      .select('id')
+      .limit(1)
+      .single()
     
-    if (existing.rows.length > 0) {
+    if (existing) {
       // Update existing record
-      const result = await query(
-        `
-        UPDATE about_content 
-        SET hero = $1,
-            story = $2,
-            values = $3,
-            team = $4,
-            updated_at = NOW()
-        WHERE id = $5
-        RETURNING *
-        `,
-        [
-          JSON.stringify(hero),
-          JSON.stringify(story),
-          JSON.stringify(values),
-          JSON.stringify(team),
-          existing.rows[0].id
-        ]
-      )
-      return NextResponse.json({ content: result.rows[0] })
+      const { data: result, error: updateError } = await supabase
+        .from('about_content')
+        .update({
+          hero,
+          story,
+          values,
+          team,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('[ABOUT] Erro ao atualizar:', updateError)
+        throw updateError
+      }
+
+      return NextResponse.json({ content: result })
     } else {
       // Create new record
-      const result = await query(
-        `
-        INSERT INTO about_content 
-        (hero, story, values, team)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-        `,
-        [
-          JSON.stringify(hero),
-          JSON.stringify(story),
-          JSON.stringify(values),
-          JSON.stringify(team)
-        ]
-      )
-      return NextResponse.json({ content: result.rows[0] })
+      const { data: result, error: insertError } = await supabase
+        .from('about_content')
+        .insert({
+          hero,
+          story,
+          values,
+          team
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('[ABOUT] Erro ao criar:', insertError)
+        throw insertError
+      }
+
+      return NextResponse.json({ content: result })
     }
   } catch (error) {
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })

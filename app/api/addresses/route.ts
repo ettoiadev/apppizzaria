@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
 
 // GET - Listar endereços do usuário
@@ -12,12 +12,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "UserId não fornecido" }, { status: 400 })
     }
 
-    const result = await query(
-      'SELECT *, label as name FROM customer_addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC',
-      [userId]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    return NextResponse.json({ addresses: result.rows })
+    const { data: addresses, error } = await supabase
+      .from('customer_addresses')
+      .select('*, label as name')
+      .eq('user_id', userId)
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar endereços:', error)
+      throw error
+    }
+
+    return NextResponse.json({ addresses: addresses || [] })
   } catch (error) {
     console.error("Erro ao buscar endereços:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
@@ -65,28 +77,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Estado deve ter 2 caracteres (UF)" }, { status: 400 })
     }
 
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     // Se o novo endereço for padrão, remover o padrão dos outros
     if (is_default) {
-      await query(
-        'UPDATE customer_addresses SET is_default = false WHERE user_id = $1',
-        [customer_id]
-      )
+      const { error: updateError } = await supabase
+        .from('customer_addresses')
+        .update({ is_default: false })
+        .eq('user_id', customer_id)
+        
+      if (updateError) {
+        console.error('Erro ao atualizar endereços padrão:', updateError)
+        throw updateError
+      }
     }
 
     // Inserir novo endereço
-    const result = await query(
-      `
-      INSERT INTO customer_addresses 
-      (user_id, label, street, number, complement, neighborhood, city, state, zip_code, is_default)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *, label as name
-      `,
-      [customer_id, name || 'Endereço', street, number, complement, neighborhood, city, state, zip_code, is_default || false]
-    )
+    const { data: newAddress, error: insertError } = await supabase
+      .from('customer_addresses')
+      .insert({
+        user_id: customer_id,
+        label: name || 'Endereço',
+        street,
+        number,
+        complement,
+        neighborhood,
+        city,
+        state,
+        zip_code,
+        is_default: is_default || false
+      })
+      .select('*, label as name')
+      .single()
 
-    console.log("POST /api/addresses - Endereço criado:", result.rows[0])
+    if (insertError) {
+      console.error('Erro ao criar endereço:', insertError)
+      throw insertError
+    }
 
-    return NextResponse.json({ address: result.rows[0] })
+    console.log("POST /api/addresses - Endereço criado:", newAddress)
+
+    return NextResponse.json({ address: newAddress })
   } catch (error) {
     console.error("Erro ao criar endereço:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })

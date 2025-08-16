@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 // POST - Enviar mensagem de contato
 export async function POST(request: Request) {
@@ -24,23 +24,34 @@ export async function POST(request: Request) {
       )
     }
 
-    // Inserir mensagem
-    const result = await query(
-      `
-      INSERT INTO contact_messages 
-      (name, email, subject, message)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-      `,
-      [name, email, subject || "Contato via site", message]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+
+    // Inserir mensagem
+    const { data: result, error: insertError } = await supabase
+      .from('contact_messages')
+      .insert({
+        name,
+        email,
+        subject: subject || "Contato via site",
+        message
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('[CONTACT] Erro ao inserir mensagem:', insertError)
+      throw insertError
+    }
 
     // TODO: Enviar email de notificação para o administrador
     // Isso será implementado quando configurarmos o serviço de email
 
     return NextResponse.json({ 
       message: "Mensagem enviada com sucesso",
-      contact: result.rows[0]
+      contact: result
     })
   } catch (error) {
     console.error("Erro ao enviar mensagem:", error)

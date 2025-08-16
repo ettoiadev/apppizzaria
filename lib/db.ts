@@ -1,23 +1,36 @@
 import { Pool } from 'pg';
+import { createClient } from '@supabase/supabase-js';
 
-// Configuração do Supabase PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  max: 10,
-  idleTimeoutMillis: 20000,
-  connectionTimeoutMillis: 5000,
-  statement_timeout: 30000,
-  query_timeout: 30000,
-  application_name: 'williamdiskpizza'
-});
+// Cliente Supabase para operações diretas
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
-// Verificar se a DATABASE_URL está configurada
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL não está configurada no arquivo .env');
-  process.exit(1);
+// Configuração do pool PostgreSQL (lazy initialization)
+let pool: Pool | null = null;
+
+function getPool() {
+  if (!pool) {
+    // Verificar se a DATABASE_URL está configurada
+    if (!process.env.DATABASE_URL) {
+      throw new Error('❌ DATABASE_URL não está configurada no arquivo .env');
+    }
+    
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? {
+        rejectUnauthorized: false
+      } : false,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    });
+    
+    console.log('🔗 Pool PostgreSQL inicializado');
+  }
+  
+  return pool;
 }
 
 // Controle de logs baseado em ambiente
@@ -30,7 +43,8 @@ const slowQueryThreshold = parseInt(process.env.SLOW_QUERY_THRESHOLD || '1000');
 export async function query(text: string, params?: any[]) {
   const start = Date.now();
   try {
-    const res = await pool.query(text, params);
+    const currentPool = getPool();
+    const res = await currentPool.query(text, params);
     const duration = Date.now() - start;
     
     // Log baseado em configuração e performance
@@ -69,7 +83,8 @@ export async function query(text: string, params?: any[]) {
 
 // Função para obter uma conexão do pool
 export async function getClient() {
-  const client = await pool.connect();
+  const currentPool = getPool();
+  const client = await currentPool.connect();
   const queryFn = client.query.bind(client);
   const release = client.release.bind(client);
 
@@ -94,5 +109,28 @@ export function debugQuery(text: string, params?: any[]) {
   }
 }
 
-// Exporta o pool para uso direto se necessário
-export { pool };
+// Função alternativa usando Supabase diretamente
+export async function supabaseQuery(text: string, params?: any[]) {
+  try {
+    // Converte query PostgreSQL para RPC do Supabase se necessário
+    if (text.includes('SELECT') && text.includes('auth.users')) {
+      // Para queries de autenticação, usar o cliente Supabase
+      const { data, error } = await supabase.rpc('execute_sql', {
+        query: text,
+        params: params || []
+      });
+      
+      if (error) throw error;
+      return { rows: data || [] };
+    }
+    
+    // Para outras queries, usar o pool normal
+    return await query(text, params);
+  } catch (error) {
+    console.error('❌ Supabase query error', { text, error });
+    throw error;
+  }
+}
+
+// Exporta o pool e cliente Supabase para uso direto se necessário
+export { getPool as pool, supabase };

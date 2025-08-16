@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,99 +17,96 @@ export async function GET(request: NextRequest) {
 
     console.log("GET /api/orders - Fetching orders with params:", { status, userId, limit, offset })
 
-    // Construir a query base
-    let queryText = `
-      SELECT o.*, 
-             p.full_name, p.phone,
-             COALESCE(p.full_name, o.customer_name) as customer_display_name,
-             COALESCE(o.delivery_phone, p.phone) as customer_display_phone,
-             json_agg(
-               json_build_object(
-                 'id', oi.id,
-                 'product_id', oi.product_id,
-                 'name', oi.name,
-                 'quantity', oi.quantity,
-                 'unit_price', oi.unit_price,
-                 'total_price', oi.total_price,
-                 'size', oi.size,
-                 'toppings', oi.toppings,
-                 'special_instructions', oi.special_instructions,
-                 'half_and_half', oi.half_and_half,
-                 'products', json_build_object(
-                   'name', pr.name,
-                   'description', pr.description,
-                   'image', pr.image
-                 )
-               )
-             ) as order_items
-      FROM orders o
-      LEFT JOIN profiles p ON o.user_id = p.id
-      LEFT JOIN order_items oi ON o.id = oi.order_id
-      LEFT JOIN products pr ON oi.product_id = pr.id
-    `
+    // Construir query do Supabase
+    let ordersQuery = supabase
+      .from('orders')
+      .select(`
+        *,
+        profiles:user_id(
+          full_name,
+          phone
+        ),
+        order_items(
+          id,
+          product_id,
+          name,
+          quantity,
+          unit_price,
+          total_price,
+          size,
+          toppings,
+          special_instructions,
+          half_and_half,
+          products:product_id(
+            name,
+            description,
+            image
+          )
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-    const whereConditions = []
-    const queryParams = []
-    let paramCount = 1
-
+    // Aplicar filtros
     if (status && status !== "all") {
-      whereConditions.push(`o.status = $${paramCount}`)
-      queryParams.push(status)
-      paramCount++
+      ordersQuery = ordersQuery.eq('status', status)
     }
 
     if (userId) {
-      whereConditions.push(`o.user_id = $${paramCount}`)
-      queryParams.push(userId)
-      paramCount++
+      ordersQuery = ordersQuery.eq('user_id', userId)
     }
 
-    if (whereConditions.length > 0) {
-      queryText += ` WHERE ${whereConditions.join(" AND ")}`
+    const { data: orders, error: ordersError } = await ordersQuery
+
+    if (ordersError) {
+      console.error('Erro ao buscar pedidos:', ordersError)
+      throw ordersError
     }
 
-    queryText += `
-      GROUP BY o.id, p.full_name, p.phone
-      ORDER BY o.created_at DESC
-      LIMIT $${paramCount} OFFSET $${paramCount + 1}
-    `
+    // Buscar estatísticas
+    let statsQuery = supabase
+      .from('orders')
+      .select('status, total')
 
-    queryParams.push(limit, offset)
-
-    const result = await query(queryText, queryParams)
-    const orders = result.rows
-
-    // Buscar estatísticas - filtrar por usuário se fornecido
-    let statsQuery = "SELECT status, total FROM orders"
-    let statsParams = []
-    
     if (userId) {
-      statsQuery += " WHERE user_id = $1"
-      statsParams.push(userId)
+      statsQuery = statsQuery.eq('user_id', userId)
     }
-    
-    const statsResult = await query(statsQuery, statsParams)
-    const stats = statsResult.rows
+
+    const { data: stats, error: statsError } = await statsQuery
+
+    if (statsError) {
+      console.error('Erro ao buscar estatísticas:', statsError)
+      throw statsError
+    }
 
     const statistics = {
-      total: stats.length,
-      received: stats.filter((o) => o.status === "RECEIVED").length,
-      preparing: stats.filter((o) => o.status === "PREPARING").length,
-      onTheWay: stats.filter((o) => o.status === "ON_THE_WAY").length,
-      delivered: stats.filter((o) => o.status === "DELIVERED").length,
-      cancelled: stats.filter((o) => o.status === "CANCELLED").length,
+      total: stats?.length || 0,
+      received: stats?.filter((o) => o.status === "RECEIVED").length || 0,
+      preparing: stats?.filter((o) => o.status === "PREPARING").length || 0,
+      onTheWay: stats?.filter((o) => o.status === "ON_THE_WAY").length || 0,
+      delivered: stats?.filter((o) => o.status === "DELIVERED").length || 0,
+      cancelled: stats?.filter((o) => o.status === "CANCELLED").length || 0,
       totalRevenue: stats
-        .filter((o) => o.status === "DELIVERED")
-        .reduce((sum, o) => sum + Number.parseFloat(o.total), 0),
+        ?.filter((o) => o.status === "DELIVERED")
+        .reduce((sum, o) => sum + Number.parseFloat(o.total), 0) || 0,
     }
 
+    // Processar orders para adicionar campos calculados
+    const processedOrders = orders?.map(order => ({
+      ...order,
+      customer_display_name: order.profiles?.full_name || order.customer_name,
+      customer_display_phone: order.delivery_phone || order.profiles?.phone,
+      full_name: order.profiles?.full_name,
+      phone: order.profiles?.phone
+    })) || []
+
     return NextResponse.json({
-      orders,
+      orders: processedOrders,
       statistics,
       pagination: {
         limit,
         offset,
-        hasMore: orders.length === limit,
+        hasMore: (orders?.length || 0) === limit,
       },
     })
   } catch (error) {
@@ -114,8 +116,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let transactionStarted = false
-  
   try {
     console.log("=== POST /api/orders - INÍCIO ===")
     
@@ -179,41 +179,52 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Iniciar transação
-    console.log("Iniciando transação no banco...")
-    await query("BEGIN")
-    transactionStarted = true
-
     try {
       // Atualizar perfil do usuário com nome e telefone se fornecidos e não existirem
       if (customer_name || delivery_phone) {
         console.log("Atualizando perfil do usuário com dados do pedido...")
         
-        const profileUpdateFields = []
-        const profileUpdateValues = []
-        let profileParamCount = 1
-
+        const updateData: any = {}
+        
         if (customer_name) {
-          profileUpdateFields.push(`full_name = COALESCE(full_name, $${profileParamCount})`)
-          profileUpdateValues.push(customer_name)
-          profileParamCount++
+          updateData.full_name = customer_name
         }
-
+        
         if (delivery_phone) {
-          profileUpdateFields.push(`phone = COALESCE(phone, $${profileParamCount})`)
-          profileUpdateValues.push(delivery_phone)
-          profileParamCount++
+          updateData.phone = delivery_phone
         }
-
-        if (profileUpdateFields.length > 0) {
-          profileUpdateValues.push(user_id)
-          const profileUpdateQuery = `
-            UPDATE profiles 
-            SET ${profileUpdateFields.join(', ')}, updated_at = NOW()
-            WHERE id = $${profileParamCount}
-          `
-          await query(profileUpdateQuery, profileUpdateValues)
-          console.log("Perfil do usuário atualizado com sucesso")
+        
+        if (Object.keys(updateData).length > 0) {
+          // Buscar perfil atual para verificar campos vazios
+          const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', user_id)
+            .single()
+            
+          const finalUpdateData: any = { updated_at: new Date().toISOString() }
+          
+          if (customer_name && (!currentProfile?.full_name || currentProfile.full_name.trim() === '')) {
+            finalUpdateData.full_name = customer_name
+          }
+          
+          if (delivery_phone && (!currentProfile?.phone || currentProfile.phone.trim() === '')) {
+            finalUpdateData.phone = delivery_phone
+          }
+          
+          if (Object.keys(finalUpdateData).length > 1) { // Mais que apenas updated_at
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update(finalUpdateData)
+              .eq('id', user_id)
+              
+            if (profileError) {
+              console.error('Erro ao atualizar perfil:', profileError)
+              // Não falhar o pedido por erro no perfil
+            } else {
+              console.log("Perfil do usuário atualizado com sucesso")
+            }
+          }
         }
       }
       // Criar pedido
@@ -229,42 +240,37 @@ export async function POST(request: NextRequest) {
         customer_name: customer_name || null
       })
 
-      const orderResult = await query(
-        `
-        INSERT INTO orders (
-          user_id, status, total, subtotal, delivery_fee, discount,
-          payment_method, payment_status, delivery_address, delivery_phone,
-          delivery_instructions, estimated_delivery_time, customer_name
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING *
-        `,
-        [
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
           user_id,
-          "RECEIVED",
+          status: "RECEIVED",
           total,
           subtotal,
           delivery_fee,
-          0, // discount
+          discount: 0,
           payment_method,
-          "PENDING",
+          payment_status: "PENDING",
           delivery_address,
           delivery_phone,
           delivery_instructions,
-          new Date(Date.now() + 45 * 60 * 1000).toISOString(),
+          estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
           customer_name,
-        ]
-      )
+        })
+        .select()
+        .single()
 
-      if (!orderResult.rows || orderResult.rows.length === 0) {
-        throw new Error("Falha ao criar pedido - nenhum registro retornado")
+      if (orderError || !order) {
+        console.error('Erro ao criar pedido:', orderError)
+        throw new Error("Falha ao criar pedido - " + (orderError?.message || "nenhum registro retornado"))
       }
 
-      const order = orderResult.rows[0]
       console.log("Pedido criado com sucesso! ID:", order.id)
 
       // Criar itens do pedido
       console.log(`Inserindo ${items.length} itens do pedido...`)
+      
+      const orderItems = []
       
       for (let i = 0; i < items.length; i++) {
         const item = items[i]
@@ -304,40 +310,33 @@ export async function POST(request: NextRequest) {
           throw new Error(`Item ${i + 1} possui ID de produto inválido: ${product_id}`)
         }
 
-        try {
-          // Inserir item com todas as informações
-          await query(
-            `
-            INSERT INTO order_items (
-              order_id, product_id, name, quantity, unit_price, total_price,
-              size, toppings, special_instructions, half_and_half
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            `,
-            [
-              order.id,
-              product_id,
-              item.name || '',
-              quantity,
-              unit_price,
-              quantity * unit_price,
-              item.size || null,
-              JSON.stringify(item.toppings || []),
-              item.notes || null,
-              item.halfAndHalf ? JSON.stringify(item.halfAndHalf) : null
-            ]
-          )
-          console.log(`Item ${i + 1} inserido com sucesso com todas as informações`)
-        } catch (insertError: any) {
-          console.error(`ERRO ao inserir item ${i + 1}:`, insertError)
-          throw new Error(`Falha ao inserir item ${i + 1}: ${insertError.message}`)
-        }
+        orderItems.push({
+          order_id: order.id,
+          product_id,
+          name: item.name || '',
+          quantity,
+          unit_price,
+          total_price: quantity * unit_price,
+          size: item.size || null,
+          toppings: JSON.stringify(item.toppings || []),
+          special_instructions: item.notes || null,
+          half_and_half: item.halfAndHalf ? JSON.stringify(item.halfAndHalf) : null
+        })
       }
+      
+      // Inserir todos os itens de uma vez
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+        
+      if (itemsError) {
+        console.error('Erro ao inserir itens do pedido:', itemsError)
+        throw new Error(`Falha ao inserir itens do pedido: ${itemsError.message}`)
+      }
+      
+      console.log(`${items.length} itens inseridos com sucesso`)
 
-      console.log("Fazendo COMMIT da transação...")
-      await query("COMMIT")
-      transactionStarted = false
-      console.log("Transação concluída com sucesso!")
+      console.log("Pedido e itens criados com sucesso!")
 
       // Sistema de atualização manual via interface administrativa
 
@@ -354,12 +353,6 @@ export async function POST(request: NextRequest) {
       
     } catch (innerError: any) {
       console.error("ERRO durante criação do pedido:", innerError)
-      
-      if (transactionStarted) {
-        console.log("Fazendo ROLLBACK da transação...")
-        await query("ROLLBACK")
-      }
-      
       throw innerError
     }
   } catch (error: any) {

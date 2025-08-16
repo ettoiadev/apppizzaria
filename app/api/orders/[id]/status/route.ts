@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export async function PATCH(
   request: NextRequest,
@@ -51,18 +51,23 @@ export async function PATCH(
 
     console.log("Validação inicial concluída. Buscando pedido no banco...")
 
-    // Check if order exists and get current status
-    const orderResult = await query(
-      'SELECT id, status FROM orders WHERE id = $1',
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (orderResult.rows.length === 0) {
+    // Check if order exists and get current status
+    const { data: currentOrder, error: orderError } = await supabase
+      .from('orders')
+      .select('id, status')
+      .eq('id', params.id)
+      .single()
+
+    if (orderError || !currentOrder) {
       console.error("Pedido não encontrado:", params.id)
       return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 })
     }
 
-    const currentOrder = orderResult.rows[0]
     console.log("Pedido encontrado:", currentOrder)
 
     // Prevent status regression (optional business logic)
@@ -77,168 +82,126 @@ export async function PATCH(
       }, { status: 400 })
     }
 
-    console.log("Iniciando transação no banco...")
+    console.log("Atualizando status do pedido para:", status)
 
-    // Begin transaction
-    await query('BEGIN')
-
-    try {
-      console.log("Atualizando status do pedido para:", status)
-
-      // Verificar estrutura da tabela orders
-      const columnsResult = await query(`
-        SELECT column_name, data_type, udt_name
-        FROM information_schema.columns 
-        WHERE table_name = 'orders' 
-          AND column_name IN ('status', 'delivered_at', 'cancelled_at')
-      `)
-      
-      const columns = columnsResult.rows
-      const existingColumns = columns.map(col => col.column_name)
-      const statusColumn = columns.find(col => col.column_name === 'status')
-      
-      console.log("Colunas disponíveis:", columns)
-      console.log("Tipo da coluna status:", statusColumn)
-      
-      // Determinar como fazer cast do status baseado no tipo da coluna
-      const isEnumStatus = statusColumn?.udt_name === 'order_status' || statusColumn?.data_type === 'USER-DEFINED'
-      const statusCast = isEnumStatus ? 'CAST($1 AS order_status)' : '$1::VARCHAR'
-      const statusComparison = isEnumStatus ? 'CAST($PARAM AS order_status)' : '$PARAM::VARCHAR'
-      
-      console.log("Usando ENUM para status:", isEnumStatus)
-      
-      // Construir query UPDATE de forma segura
-      let updateQuery = `UPDATE orders SET status = ${statusCast}, updated_at = NOW()`
-      const queryParams = [status]
-      let paramCount = 2
-      
-      if (existingColumns.includes('delivered_at')) {
-        const deliveredComparison = statusComparison.replace('$PARAM', `$${paramCount}`)
-        updateQuery += `, delivered_at = CASE WHEN ${deliveredComparison} = 'DELIVERED' THEN NOW() ELSE delivered_at END`
-        queryParams.push(status)
-        paramCount++
-      }
-      
-      if (existingColumns.includes('cancelled_at')) {
-        const cancelledComparison = statusComparison.replace('$PARAM', `$${paramCount}`)
-        updateQuery += `, cancelled_at = CASE WHEN ${cancelledComparison} = 'CANCELLED' THEN NOW() ELSE cancelled_at END`
-        queryParams.push(status)
-        paramCount++
-      }
-      
-      updateQuery += ` WHERE id = $${paramCount}::UUID RETURNING *`
-      queryParams.push(params.id)
-      
-      console.log("Query final:", updateQuery)
-      console.log("Parâmetros:", queryParams)
-      
-      const updateResult = await query(updateQuery, queryParams)
-
-      if (updateResult.rows.length === 0) {
-        throw new Error("Falha ao atualizar pedido - nenhum registro retornado")
-      }
-
-      const updatedOrder = updateResult.rows[0]
-      console.log("Pedido atualizado com sucesso")
-
-      // Try to insert status history (optional - se a tabela não existir, ignorar)
-      try {
-        console.log("Tentando inserir histórico de status...")
-        
-        // Verificar se tabela order_status_history existe e qual tipo usa
-        let historyStatusCast = isEnumStatus ? 'CAST($2 AS order_status)' : '$2::VARCHAR'
-        let historyNewStatusCast = isEnumStatus ? 'CAST($3 AS order_status)' : '$3::VARCHAR'
-        
-        await query(
-          `INSERT INTO order_status_history 
-           (order_id, old_status, new_status, notes, changed_at) 
-           VALUES ($1::UUID, ${historyStatusCast}, ${historyNewStatusCast}, $4::TEXT, NOW())`,
-          [params.id, currentOrder.status, status, notes || null]
-        )
-        console.log("Histórico de status inserido com sucesso")
-      } catch (historyError: any) {
-        console.warn("Erro ao inserir histórico (ignorando):", historyError.message)
-        // Não falhar se a tabela de histórico não existir
-      }
-
-      await query('COMMIT')
-      console.log("Transação commitada com sucesso")
-
-      return NextResponse.json({
-        message: "Status do pedido atualizado com sucesso",
-        order: updatedOrder
-      })
-    } catch (error) {
-      console.error("Erro durante transação:", error)
-      await query('ROLLBACK')
-      throw error
+    // Preparar dados de atualização
+    const updateData: any = {
+      status: status,
+      updated_at: new Date().toISOString()
     }
+
+    // Adicionar timestamps específicos baseados no status
+    if (status === 'DELIVERED') {
+      updateData.delivered_at = new Date().toISOString()
+    } else if (status === 'CANCELLED') {
+      updateData.cancelled_at = new Date().toISOString()
+    }
+
+    console.log("Dados de atualização:", updateData)
+
+    // Atualizar pedido usando Supabase
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', params.id)
+      .select()
+      .single()
+
+    if (updateError || !updatedOrder) {
+      console.error("Erro ao atualizar pedido:", updateError)
+      throw new Error("Falha ao atualizar pedido - nenhum registro retornado")
+    }
+
+    console.log("Pedido atualizado com sucesso")
+
+    // Try to insert status history (optional - se a tabela não existir, ignorar)
+    try {
+      console.log("Tentando inserir histórico de status...")
+      
+      await supabase
+        .from('order_status_history')
+        .insert({
+          order_id: params.id,
+          old_status: currentOrder.status,
+          new_status: status,
+          notes: notes || null,
+          changed_at: new Date().toISOString()
+        })
+      console.log("Histórico de status inserido com sucesso")
+    } catch (historyError: any) {
+      console.warn("Erro ao inserir histórico (ignorando):", historyError.message)
+      // Não falhar se a tabela de histórico não existir
+    }
+
+    console.log("Operação concluída com sucesso")
+
+    return NextResponse.json({
+      message: "Status do pedido atualizado com sucesso",
+      order: updatedOrder
+    })
   } catch (error: any) {
     console.error("=== ERRO COMPLETO NO PATCH /api/orders/[id]/status ===")
-    console.error("Tipo:", error.constructor.name)
-    console.error("Mensagem:", error.message)
-    console.error("Stack:", error.stack)
-    
-    if (error.code) {
-      console.error("Código PostgreSQL:", error.code)
-      console.error("Detalhe:", error.detail)
-      console.error("Hint:", error.hint)
+    console.error("Tipo do erro:", typeof error)
+    console.error("Erro:", error)
+    console.error("Message:", error?.message)
+    console.error("=== FIM DO ERRO COMPLETO ===")
+
+    if (error?.message?.includes("invalid input value for enum")) {
+      return NextResponse.json(
+        { error: "Status inválido fornecido" },
+        { status: 400 }
+      )
     }
-    
-    return NextResponse.json({ 
-      error: error.message || "Erro interno do servidor",
-      details: {
-        type: error.constructor.name,
-        code: error.code,
-        message: error.message
-      }
-    }, { status: 500 })
+
+    if (error?.message?.includes("relation") && error?.message?.includes("does not exist")) {
+      return NextResponse.json(
+        { error: "Tabela de pedidos não encontrada" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    )
   }
 }
 
-// Handle DELETE requests (redirect to PATCH with CANCELLED status)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log("=== DELETE /api/orders/[id]/status - REDIRECIONANDO PARA PATCH ===")
-    console.log("Order ID:", params.id)
-    
-    // Parse body to get cancellation notes if provided
-    let notes = null
-    try {
-      const body = await request.json()
-      notes = body.notes || body.motivoCancelamento || null
-      console.log("Notas de cancelamento:", notes)
-    } catch (parseError) {
-      console.log("Nenhuma nota de cancelamento fornecida")
-    }
+    console.log("=== DELETE /api/orders/[id]/status iniciado ===")
+    console.log("ID do pedido:", params.id)
 
-    // Create a new request with PATCH method
+    // Parse request body for cancellation notes
+    const body = await request.json().catch(() => ({}))
+    const { notes } = body
+
+    console.log("Notas de cancelamento:", notes)
+
+    // Redirect to PATCH with CANCELLED status
     const patchRequest = new NextRequest(request.url, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        status: 'CANCELLED', 
-        notes: notes 
+      headers: request.headers,
+      body: JSON.stringify({
+        status: 'CANCELLED',
+        notes: notes
       })
     })
 
-    // Call the PATCH handler
+    console.log("Redirecionando para PATCH com status CANCELLED")
     return await PATCH(patchRequest, { params })
+
   } catch (error: any) {
-    console.error("=== ERRO COMPLETO NO DELETE /api/orders/[id]/status ===")
-    console.error("Erro:", error.message)
-    
-    return NextResponse.json({ 
-      error: error.message || "Erro interno do servidor",
-      details: {
-        type: error.constructor.name,
-        message: error.message
-      }
-    }, { status: 500 })
+    console.error("=== ERRO NO DELETE /api/orders/[id]/status ===")
+    console.error("Erro:", error)
+    console.error("Message:", error?.message)
+
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    )
   }
 }

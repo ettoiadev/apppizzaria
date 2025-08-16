@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query, getClient } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export async function PATCH(
   request: NextRequest,
@@ -19,22 +19,25 @@ export async function PATCH(
       )
     }
 
-    // Verificar se o entregador existe e está disponível
-    const driverQuery = `
-      SELECT id, name, status, vehicle_type
-      FROM drivers 
-      WHERE id = $1
-    `
-    const driverResult = await query(driverQuery, [driverId])
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (driverResult.rows.length === 0) {
+    // Verificar se o entregador existe e está disponível
+    const { data: driver, error: driverError } = await supabase
+      .from('drivers')
+      .select('id, name, status, vehicle_type')
+      .eq('id', driverId)
+      .single()
+
+    if (driverError || !driver) {
       return NextResponse.json(
         { error: "Entregador não encontrado" },
         { status: 404 }
       )
     }
 
-    const driver = driverResult.rows[0]
     if (driver.status !== 'available') {
       return NextResponse.json(
         { error: "Entregador não está disponível" },
@@ -43,21 +46,19 @@ export async function PATCH(
     }
 
     // Verificar se o pedido existe e está em preparo
-    const orderQuery = `
-      SELECT id, status, user_id, driver_id
-      FROM orders 
-      WHERE id = $1
-    `
-    const orderResult = await query(orderQuery, [orderId])
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('id, status, user_id, driver_id')
+      .eq('id', orderId)
+      .single()
 
-    if (orderResult.rows.length === 0) {
+    if (orderError || !order) {
       return NextResponse.json(
         { error: "Pedido não encontrado" },
         { status: 404 }
       )
     }
 
-    const order = orderResult.rows[0]
     if (order.status !== 'PREPARING') {
       return NextResponse.json(
         { error: "Pedido deve estar em preparo para atribuir entregador" },
@@ -65,57 +66,64 @@ export async function PATCH(
       )
     }
 
-    // Usar getClient para transação
-    const { client, release } = await getClient()
-    
+    // Atualizar o pedido e o motorista usando Supabase
     try {
-      await client.query('BEGIN')
-
       // 1. Atualizar o pedido com o entregador e mudar status para ON_THE_WAY
-      const updateOrderQuery = `
-        UPDATE orders 
-        SET 
-          driver_id = $1,
-          status = 'ON_THE_WAY',
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-        RETURNING 
-          id, status, total, delivery_address, driver_id,
-          created_at, updated_at
-      `
-      const updateOrderResult = await client.query(updateOrderQuery, [driverId, orderId])
+      const { data: updatedOrder, error: updateOrderError } = await supabase
+        .from('orders')
+        .update({
+          driver_id: driverId,
+          status: 'ON_THE_WAY',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .select('id, status, total, delivery_address, driver_id, created_at, updated_at')
+        .single()
+
+      if (updateOrderError) {
+        throw new Error(`Erro ao atualizar pedido: ${updateOrderError.message}`)
+      }
 
       // 2. Atualizar status do entregador para busy
-      const updateDriverQuery = `
-        UPDATE drivers 
-        SET 
-          status = 'busy',
-          last_active_at = CURRENT_TIMESTAMP,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1
-        RETURNING id, name, status
-      `
-      const updateDriverResult = await client.query(updateDriverQuery, [driverId])
+      const { data: updatedDriver, error: updateDriverError } = await supabase
+        .from('drivers')
+        .update({
+          status: 'busy',
+          last_active_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', driverId)
+        .select('id, name, status')
+        .single()
 
-      await client.query('COMMIT')
+      if (updateDriverError) {
+        // Reverter a atualização do pedido
+        await supabase
+          .from('orders')
+          .update({
+            driver_id: null,
+            status: 'PREPARING',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', orderId)
+        
+        throw new Error(`Erro ao atualizar motorista: ${updateDriverError.message}`)
+      }
 
       console.log("Entregador atribuído com sucesso:", {
-        order: updateOrderResult.rows[0],
-        driver: updateDriverResult.rows[0]
+        order: updatedOrder,
+        driver: updatedDriver
       })
 
       return NextResponse.json({
         message: "Entregador atribuído com sucesso",
-        order: updateOrderResult.rows[0],
-        driver: updateDriverResult.rows[0]
+        order: updatedOrder,
+        driver: updatedDriver
       })
 
     } catch (error) {
-      await client.query('ROLLBACK')
-      console.error("Erro na transação:", error)
+      console.error("Erro na operação:", error)
       throw error
-    } finally {
-      release()
     }
 
   } catch (error: any) {
@@ -165,22 +173,24 @@ export async function DELETE(
 
     console.log("DELETE /api/orders/[id]/assign-driver - Removendo entregador:", orderId)
 
-    // Buscar informações do pedido e entregador atual
-    const orderQuery = `
-      SELECT id, status, driver_id
-      FROM orders 
-      WHERE id = $1
-    `
-    const orderResult = await query(orderQuery, [orderId])
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (orderResult.rows.length === 0) {
+    // Buscar informações do pedido e entregador atual
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('id, status, driver_id')
+      .eq('id', orderId)
+      .single()
+
+    if (orderError || !order) {
       return NextResponse.json(
         { error: "Pedido não encontrado" },
         { status: 404 }
       )
     }
-
-    const order = orderResult.rows[0]
     if (!order.driver_id) {
       return NextResponse.json(
         { error: "Pedido não tem entregador atribuído" },
@@ -195,62 +205,61 @@ export async function DELETE(
       )
     }
 
-    // Usar getClient para transação
-    const { client, release } = await getClient()
-    
+    // Remover entregador do pedido usando Supabase
     try {
-      await client.query('BEGIN')
-
       // 1. Remover entregador do pedido e voltar status para PREPARING
-      const updateOrderQuery = `
-        UPDATE orders 
-        SET 
-          driver_id = NULL,
-          status = 'PREPARING',
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1
-        RETURNING id, status, driver_id
-      `
-      const updateOrderResult = await client.query(updateOrderQuery, [orderId])
+      const { data: updatedOrder, error: updateOrderError } = await supabase
+        .from('orders')
+        .update({
+          driver_id: null,
+          status: 'PREPARING',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .select('id, status, driver_id')
+        .single()
 
-      // 2. Verificar se o entregador tem outros pedidos ativos
-      const activeOrdersQuery = `
-        SELECT COUNT(*) as count
-        FROM orders 
-        WHERE driver_id = $1 
-        AND status IN ('ON_THE_WAY')
-      `
-      const activeOrdersResult = await client.query(activeOrdersQuery, [order.driver_id])
-
-      // 3. Se não tem outros pedidos, voltar entregador para available
-      if (parseInt(activeOrdersResult.rows[0].count) === 0) {
-        const updateDriverQuery = `
-          UPDATE drivers 
-          SET 
-            status = 'available',
-            last_active_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1
-          RETURNING id, name, status
-        `
-        await client.query(updateDriverQuery, [order.driver_id])
+      if (updateOrderError) {
+        throw new Error(`Erro ao atualizar pedido: ${updateOrderError.message}`)
       }
 
-      await client.query('COMMIT')
+      // 2. Verificar se o entregador tem outros pedidos ativos
+      const { count: activeOrdersCount, error: countError } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('driver_id', order.driver_id)
+        .in('status', ['ON_THE_WAY'])
 
-      console.log("Entregador removido com sucesso:", updateOrderResult.rows[0])
+      if (countError) {
+        console.error('Erro ao contar pedidos ativos:', countError)
+      }
+
+      // 3. Se não tem outros pedidos, voltar entregador para available
+      if ((activeOrdersCount || 0) === 0) {
+        const { error: updateDriverError } = await supabase
+          .from('drivers')
+          .update({
+            status: 'available',
+            last_active_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', order.driver_id)
+
+        if (updateDriverError) {
+          console.error('Erro ao atualizar status do motorista:', updateDriverError)
+        }
+      }
+
+      console.log("Entregador removido com sucesso:", updatedOrder)
 
       return NextResponse.json({
         message: "Entregador removido com sucesso",
-        order: updateOrderResult.rows[0]
+        order: updatedOrder
       })
 
     } catch (error) {
-      await client.query('ROLLBACK')
-      console.error("Erro na transação:", error)
+      console.error("Erro na operação:", error)
       throw error
-    } finally {
-      release()
     }
 
   } catch (error: any) {
@@ -260,4 +269,4 @@ export async function DELETE(
       { status: 500 }
     )
   }
-} 
+}

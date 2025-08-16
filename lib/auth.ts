@@ -1,6 +1,12 @@
 import bcrypt from 'bcrypt';
-import { query } from './db';
 import { sign, verify } from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
+
+// Cliente Supabase para operações diretas
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Idealmente, use uma variável de ambiente
 
@@ -20,19 +26,35 @@ export async function createUser({ email, password, full_name, role = 'customer'
 }) {
   const hashedPassword = await hashPassword(password);
   
-  // Criar usuário na tabela auth.users
-  const userResult = await query(
-    'INSERT INTO auth.users (email) VALUES ($1) RETURNING id',
-    [email.toLowerCase()]
-  );
+  // Criar usuário via Supabase
+  const { data: authUser, error: authError } = await supabase.auth.signUp({
+    email: email.toLowerCase(),
+    password: password
+  });
   
-  const userId = userResult.rows[0].id;
+  if (authError) {
+    throw new Error(`Erro ao criar usuário: ${authError.message}`);
+  }
+  
+  const userId = authUser.user?.id;
+  if (!userId) {
+    throw new Error('Erro ao obter ID do usuário criado');
+  }
   
   // Criar perfil do usuário
-  await query(
-    'INSERT INTO profiles (id, email, full_name, role, password_hash) VALUES ($1, $2, $3, $4, $5)',
-    [userId, email.toLowerCase(), full_name, role, hashedPassword]
-  );
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert({
+      id: userId,
+      email: email.toLowerCase(),
+      full_name,
+      role,
+      password_hash: hashedPassword
+    });
+  
+  if (profileError) {
+    throw new Error(`Erro ao criar perfil: ${profileError.message}`);
+  }
   
   return {
     id: userId,
@@ -54,21 +76,39 @@ export function generateToken(user: any) {
   );
 }
 
-export async function verifyToken(token: string) {
+export function verifyToken(token: string) {
   try {
-    return verify(token, JWT_SECRET);
+    const decoded = verify(token, JWT_SECRET) as any;
+    return {
+      ...decoded,
+      isAdmin: decoded.role === 'admin'
+    };
   } catch (error) {
     return null;
   }
 }
 
 export async function getUserByEmail(email: string) {
-  const result = await query(
-    'SELECT u.id, u.email, p.full_name, p.role, p.password_hash FROM auth.users u JOIN profiles p ON u.id = p.id WHERE u.email = $1',
-    [email.toLowerCase()]
-  );
-  
-  return result.rows[0];
+  try {
+    console.log('🔍 Buscando usuário via Supabase:', email);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, role, password_hash')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (error) {
+      console.log('⚠️ Usuário não encontrado:', error.message);
+      return null;
+    }
+    
+    console.log('✅ Usuário encontrado via Supabase');
+    return data;
+  } catch (error) {
+    console.error('❌ Error in getUserByEmail:', error);
+    return null;
+  }
 }
 
 export async function verifyAdmin(token: string) {
@@ -77,4 +117,4 @@ export async function verifyAdmin(token: string) {
     return null;
   }
   return payload;
-} 
+}

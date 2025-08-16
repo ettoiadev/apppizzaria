@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import { join } from "path"
-import { existsSync } from "fs"
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: Request) {
   try {
@@ -22,41 +20,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Arquivo muito grande (máximo 5MB)" }, { status: 400 })
     }
 
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     // Gerar nome único para o arquivo
     const timestamp = Date.now()
     const extension = file.name.split(".").pop()
     const fileName = `${timestamp}-${Math.random().toString(36).substring(2)}.${extension}`
+    const filePath = `uploads/${fileName}`
 
-    // Criar diretório de uploads se não existir
-    const uploadDir = join(process.cwd(), "public", "uploads")
-    
-    try {
-      if (!existsSync(uploadDir)) {
-        await mkdir(uploadDir, { recursive: true })
-        console.log("Diretório de uploads criado:", uploadDir)
-      }
-    } catch (error) {
-      console.error("Erro ao criar diretório:", error)
+    // Upload para o Supabase Storage
+    const { data, error: uploadError } = await supabase.storage
+      .from('images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (uploadError) {
+      console.error("Erro ao fazer upload para Supabase:", uploadError)
+      return NextResponse.json({ 
+        error: "Erro ao salvar arquivo", 
+        details: uploadError.message 
+      }, { status: 500 })
     }
 
-    try {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      const filePath = join(uploadDir, fileName)
-      
-      await writeFile(filePath, buffer)
-      console.log("Arquivo salvo em:", filePath)
-    } catch (error) {
-      console.error("Erro ao salvar arquivo:", error)
-      return NextResponse.json({ error: "Erro ao salvar arquivo", details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
-    }
+    // Obter URL pública do arquivo
+    const { data: { publicUrl } } = supabase.storage
+      .from('images')
+      .getPublicUrl(filePath)
 
-    // Retornar URL da imagem
-    const imageUrl = `/uploads/${fileName}`
-    console.log("URL da imagem gerada:", imageUrl)
+    console.log("Arquivo salvo no Supabase:", publicUrl)
     
     return NextResponse.json({ 
-      url: imageUrl,
+      url: publicUrl,
       fileName: fileName,
       size: file.size,
       type: file.type

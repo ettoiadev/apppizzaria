@@ -1,76 +1,40 @@
 import { NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 // GET handler para buscar todas as categorias
 export async function GET() {
   try {
-    // Verificar se a tabela categories existe e quais campos estão disponíveis
-    let hasActiveField = false
-    let hasSortOrderField = false
+    // Buscar categorias usando Supabase
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('*')
+      .or('active.is.null,active.eq.true')
+      .order('sort_order', { ascending: true, nullsFirst: false })
+      .order('name', { ascending: true })
     
-    try {
-      const tableInfo = await query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'categories' AND table_schema = 'public'
-      `)
-      
-      const columns = tableInfo.rows.map(row => row.column_name)
-      hasActiveField = columns.includes('active')
-      hasSortOrderField = columns.includes('sort_order')
-      
-      console.log('🔍 Campos disponíveis na tabela categories:', columns)
-      console.log('🔍 hasActiveField:', hasActiveField, 'hasSortOrderField:', hasSortOrderField)
-    } catch (err) {
-      console.log('Erro ao verificar estrutura da tabela:', err.message)
-    }
-
-    // Construir query dinamicamente baseada nos campos disponíveis
-    let selectQuery = 'SELECT id, name'
-    
-    // Adicionar campos opcionais se existirem
-    selectQuery += ', COALESCE(description, \'\') as description'
-    selectQuery += ', COALESCE(image, \'\') as image'
-    
-    if (hasSortOrderField) {
-      selectQuery += ', COALESCE(sort_order, 0) as sort_order'
+    if (error) {
+      console.error('Erro ao buscar categorias:', error)
+      throw error
     }
     
-    if (hasActiveField) {
-      selectQuery += ', active'
-    }
-    
-    selectQuery += ' FROM categories'
-    
-    // Adicionar WHERE clause para filtrar apenas categorias ativas
-    if (hasActiveField) {
-      selectQuery += ' WHERE (active IS NULL OR active = true)'
-    }
-    
-    // Adicionar ORDER BY
-    if (hasSortOrderField) {
-      selectQuery += ' ORDER BY sort_order ASC, name ASC'
-    } else {
-      selectQuery += ' ORDER BY name ASC'
-    }
-
-    console.log('🔍 Query SQL construída:', selectQuery)
-
-    const result = await query(selectQuery)
-    
-    console.log('🔍 Resultado da query - total de linhas:', result.rows.length)
-    result.rows.forEach(row => {
+    console.log('🔍 Resultado da query - total de linhas:', categories?.length || 0)
+    categories?.forEach(row => {
       console.log(`🔍 Categoria: ${row.name}, active: ${row.active}`)
     })
 
     // Normalizar os dados para garantir consistência
-    const normalizedCategories = result.rows.map(category => ({
+    const normalizedCategories = (categories || []).map(category => ({
       id: category.id,
       name: category.name || '',
       description: category.description || '',
       image: category.image || '',
       sort_order: category.sort_order || 0,
-      active: hasActiveField ? (category.active !== false) : true
+      active: category.active !== false
     }))
 
     console.log('🔍 Categorias normalizadas - total:', normalizedCategories.length)
@@ -81,29 +45,10 @@ export async function GET() {
     return NextResponse.json({ categories: normalizedCategories })
   } catch (error) {
     console.error('Erro ao buscar categorias:', error)
-    
-    // Fallback: tentar query mais simples se a principal falhar
-    try {
-      console.log('Tentando fallback com query simples...')
-      const fallbackResult = await query('SELECT id, name FROM categories')
-      
-      const simplifiedCategories = fallbackResult.rows.map(category => ({
-        id: category.id,
-        name: category.name || '',
-        description: '',
-        image: '',
-        sort_order: 0,
-        active: true
-      }))
-      
-      return NextResponse.json({ categories: simplifiedCategories })
-    } catch (fallbackError) {
-      console.error('Erro mesmo no fallback:', fallbackError)
-      return NextResponse.json(
-        { error: 'Erro interno ao buscar categorias' },
-        { status: 500 }
-      )
-    }
+    return NextResponse.json(
+      { error: 'Erro interno ao buscar categorias' },
+      { status: 500 }
+    )
   }
 }
 
@@ -121,51 +66,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verificar se campo sort_order existe
-    let hasSortOrderField = false
-    try {
-      const tableInfo = await query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'categories' AND table_schema = 'public' AND column_name = 'sort_order'
-      `)
-      hasSortOrderField = tableInfo.rows.length > 0
-    } catch (err) {
-      console.log('Erro ao verificar campo sort_order:', err.message)
+    // Criar categoria usando Supabase
+    const { data: category, error } = await supabase
+      .from('categories')
+      .insert({
+        name: name.trim(),
+        description: description || '',
+        image: image || '',
+        sort_order: sort_order || 0
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar categoria:', error)
+      throw error
     }
-
-    let insertQuery = 'INSERT INTO categories (name'
-    let values = [name]
-    let placeholders = '$1'
-    let valueIndex = 2
-
-    if (description) {
-      insertQuery += ', description'
-      placeholders += `, $${valueIndex}`
-      values.push(description)
-      valueIndex++
-    }
-
-    if (image) {
-      insertQuery += ', image'
-      placeholders += `, $${valueIndex}`
-      values.push(image)
-      valueIndex++
-    }
-
-    if (hasSortOrderField && sort_order !== undefined) {
-      insertQuery += ', sort_order'
-      placeholders += `, $${valueIndex}`
-      values.push(sort_order)
-      valueIndex++
-    }
-
-    insertQuery += `) VALUES (${placeholders}) RETURNING *`
-
-    const result = await query(insertQuery, values)
     
     // Normalizar resposta para manter consistência
-    const category = result.rows[0]
     const normalizedCategory = {
       id: category.id,
       name: category.name,
@@ -198,33 +116,17 @@ export async function PUT(request: Request) {
       )
     }
 
-    // Verificar se campo sort_order existe antes de tentar atualizar
-    try {
-      const tableInfo = await query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'categories' AND table_schema = 'public' AND column_name = 'sort_order'
-      `)
-      
-      if (tableInfo.rows.length === 0) {
-        return NextResponse.json(
-          { error: 'Campo sort_order não existe na tabela. Execute a migração do banco primeiro.' },
-          { status: 400 }
-        )
-      }
-    } catch (err) {
-      return NextResponse.json(
-        { error: 'Erro ao verificar estrutura da tabela' },
-        { status: 500 }
-      )
-    }
-
-    // Atualizar ordem de cada categoria
+    // Atualizar ordem de cada categoria usando Supabase
     for (const { id, sort_order } of categoryOrders) {
-      await query(
-        'UPDATE categories SET sort_order = $1 WHERE id = $2',
-        [sort_order, id]
-      )
+      const { error } = await supabase
+        .from('categories')
+        .update({ sort_order })
+        .eq('id', id)
+      
+      if (error) {
+        console.error(`Erro ao atualizar categoria ${id}:`, error)
+        throw error
+      }
     }
 
     return NextResponse.json({ success: true })

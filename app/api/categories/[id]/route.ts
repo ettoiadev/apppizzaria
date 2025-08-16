@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,17 +7,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   try {
     console.log('GET /api/categories/[id] - ID:', params.id)
     
-    const result = await query(
-      'SELECT * FROM categories WHERE id = $1',
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (result.rows.length === 0) {
+    const { data: category, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', params.id)
+      .single()
+
+    if (error || !category) {
       console.log('Categoria não encontrada:', params.id)
       return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 })
     }
 
-    const category = result.rows[0]
     const normalizedCategory = {
       id: category.id,
       name: category.name,
@@ -72,13 +77,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    // Verificar se a categoria existe antes de tentar atualizar
-    const existingCategory = await query(
-      'SELECT id FROM categories WHERE id = $1',
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (existingCategory.rows.length === 0) {
+    // Verificar se a categoria existe antes de tentar atualizar
+    const { data: existingCategory, error: checkError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('id', params.id)
+      .single()
+
+    if (checkError || !existingCategory) {
       console.error('Categoria não encontrada para update:', params.id)
       return NextResponse.json(
         { error: "Categoria não encontrada" },
@@ -100,48 +111,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       id: params.id
     })
 
-    // Verificar quais campos existem na tabela
-    const tableInfo = await query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'categories' 
-      AND table_schema = 'public'
-    `)
-    
-    const availableColumns = tableInfo.rows.map(row => row.column_name)
-    const hasImageField = availableColumns.includes('image')
-    const hasUpdatedAtField = availableColumns.includes('updated_at')
-    
-    console.log('Colunas disponíveis:', availableColumns)
-    console.log('Tem campo image:', hasImageField, 'Tem campo updated_at:', hasUpdatedAtField)
-
-    // Construir query dinamicamente baseada nas colunas disponíveis
-    let updateQuery = `UPDATE categories SET name = $1, description = $2, active = $3`
-    let queryParams = [updateName, updateDescription, updateActive]
-    let paramCount = 4
-
-    // Adicionar image se a coluna existir
-    if (hasImageField) {
-      updateQuery += `, image = $${paramCount}`
-      queryParams.push(updateImage)
-      paramCount++
+    // Atualizar categoria usando Supabase
+    const updateData = {
+      name: updateName,
+      description: updateDescription,
+      image: updateImage,
+      active: updateActive,
+      updated_at: new Date().toISOString()
     }
-    
-    // Adicionar updated_at se a coluna existir
-    if (hasUpdatedAtField) {
-      updateQuery += ', updated_at = NOW()'
-    }
-    
-    updateQuery += ` WHERE id = $${paramCount} RETURNING *`
-    queryParams.push(params.id)
 
-    console.log('Query SQL:', updateQuery)
-    console.log('Parâmetros:', queryParams)
+    const { data: result, error: updateError } = await supabase
+      .from('categories')
+      .update(updateData)
+      .eq('id', params.id)
+      .select()
+      .single()
 
-    const result = await query(updateQuery, queryParams)
-
-    if (result.rows.length === 0) {
-      console.error('Nenhuma linha foi atualizada para ID:', params.id)
+    if (updateError || !result) {
+      console.error('Erro ao atualizar categoria:', updateError)
       return NextResponse.json(
         { error: "Categoria não encontrada ou não foi possível atualizar" },
         { status: 404 }
@@ -149,14 +136,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Normalizar resposta para manter consistência
-    const category = result.rows[0]
     const normalizedCategory = {
-      id: category.id,
-      name: category.name,
-      description: category.description || '',
-      image: hasImageField ? (category.image || '') : '',
-      sort_order: category.sort_order || 0,
-      active: category.active !== false
+      id: result.id,
+      name: result.name,
+      description: result.description || '',
+      image: result.image || '',
+      sort_order: result.sort_order || 0,
+      active: result.active !== false
     }
 
     console.log('Categoria atualizada com sucesso:', normalizedCategory)
@@ -211,74 +197,66 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       )
     }
 
-    // Verificar se a categoria existe primeiro
-    const existingCategory = await query(
-      'SELECT id, name, active FROM categories WHERE id = $1',
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (existingCategory.rows.length === 0) {
+    // Verificar se a categoria existe primeiro
+    const { data: existingCategory, error: checkError } = await supabase
+      .from('categories')
+      .select('id, name, active')
+      .eq('id', params.id)
+      .single()
+
+    if (checkError || !existingCategory) {
       console.log('Categoria não encontrada para exclusão:', params.id)
       return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 })
     }
 
-    console.log('Categoria antes da exclusão:', existingCategory.rows[0])
+    console.log('Categoria antes da exclusão:', existingCategory)
 
     // Verificar se existem produtos usando esta categoria
-    const productsCheck = await query(
-      'SELECT COUNT(*) as count FROM products WHERE category_id = $1 AND active = true',
-      [params.id]
-    )
+    const { count: activeProductsCount, error: countError } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
+      .eq('category_id', params.id)
+      .eq('active', true)
 
-    const activeProductsCount = parseInt(productsCheck.rows[0].count) || 0
-    console.log(`Categoria ${params.id} possui ${activeProductsCount} produtos ativos`)
+    if (countError) {
+      console.error('Erro ao verificar produtos:', countError)
+      return NextResponse.json({ error: "Erro ao verificar produtos da categoria" }, { status: 500 })
+    }
 
-    if (activeProductsCount > 0) {
+    console.log(`Categoria ${params.id} possui ${activeProductsCount || 0} produtos ativos`)
+
+    if ((activeProductsCount || 0) > 0) {
       return NextResponse.json(
         { error: `Não é possível excluir categoria que possui ${activeProductsCount} produto(s) ativo(s)` },
         { status: 400 }
       )
     }
 
-    // Usar transação para garantir consistência
-    await query('BEGIN')
-    
-    try {
-      // Marcar como inativa em vez de excluir fisicamente
-      const result = await query(
-        'UPDATE categories SET active = false WHERE id = $1 RETURNING id, name, active',
-        [params.id]
-      )
+    // Marcar como inativa em vez de excluir fisicamente
+    const { data: result, error: updateError } = await supabase
+      .from('categories')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('id', params.id)
+      .select('id, name, active')
+      .single()
 
-      if (result.rows.length === 0) {
-        await query('ROLLBACK')
-        console.error('Falha ao atualizar categoria - nenhuma linha afetada')
-        return NextResponse.json({ error: "Falha ao excluir categoria" }, { status: 500 })
-      }
-
-      // Commit da transação
-      await query('COMMIT')
-      console.log('Categoria marcada como inativa com sucesso:', result.rows[0])
-      
-      // Verificar se realmente foi atualizada
-      const verifyResult = await query(
-        'SELECT id, name, active FROM categories WHERE id = $1',
-        [params.id]
-      )
-      
-      console.log('Verificação após update:', verifyResult.rows[0])
-      
-      return NextResponse.json({ 
-        message: "Categoria excluída com sucesso",
-        success: true,
-        category: verifyResult.rows[0]
-      })
-      
-    } catch (transactionError) {
-      await query('ROLLBACK')
-      console.error('Erro durante transação de exclusão:', transactionError)
-      throw transactionError
+    if (updateError || !result) {
+      console.error('Falha ao atualizar categoria:', updateError)
+      return NextResponse.json({ error: "Falha ao excluir categoria" }, { status: 500 })
     }
+
+    console.log('Categoria marcada como inativa com sucesso:', result)
+    
+    return NextResponse.json({ 
+      message: "Categoria excluída com sucesso",
+      success: true,
+      category: result
+    })
     
   } catch (error: any) {
     console.error("Erro ao excluir categoria:", error)
@@ -287,4 +265,4 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 
     }, { status: 500 })
   }
-} 
+}

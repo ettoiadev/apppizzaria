@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createUser } from "@/lib/auth"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,15 +15,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Senha deve ter pelo menos 6 caracteres" }, { status: 400 })
     }
 
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
     // Check if admin registration is allowed (default to true if setting doesn't exist)
     let allowRegistration = true
     try {
-      const settingResult = await query(
-        "SELECT setting_value FROM admin_settings WHERE setting_key = 'allowAdminRegistration'"
-      )
+      const { data: settingData, error: settingError } = await supabase
+        .from('admin_settings')
+        .select('setting_value')
+        .eq('setting_key', 'allowAdminRegistration')
+        .single()
       
-      if (settingResult.rows.length > 0) {
-        const value = settingResult.rows[0].setting_value
+      if (!settingError && settingData) {
+        const value = settingData.setting_value
         allowRegistration = value === "true" || value === true
       }
     } catch (error) {
@@ -41,12 +48,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const existingUser = await query(
-      "SELECT id FROM auth.users WHERE email = $1",
-      [email.toLowerCase()]
-    )
+    const { data: existingUser, error: userCheckError } = await supabase.auth.admin.getUserByEmail(email.toLowerCase())
 
-    if (existingUser.rows.length > 0) {
+    if (existingUser.user) {
       return NextResponse.json({ error: "Este email já está cadastrado" }, { status: 400 })
     }
 

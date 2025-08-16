@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(
   request: NextRequest,
@@ -8,49 +8,43 @@ export async function GET(
   try {
     console.log(`[DRIVERS] Buscando entregador ID: ${params.id}`)
 
-    // Verificar se tabela drivers existe
-    const tableCheck = await query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' AND table_name = 'drivers'
-      ) as table_exists
-    `)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (!tableCheck.rows[0].table_exists) {
-      return NextResponse.json({
-        error: "Tabela drivers não encontrada",
-        message: "Execute o script setup-drivers-system.sql no pgAdmin4 primeiro"
-      }, { status: 404 })
-    }
-
-    // Buscar entregador por ID
-    const result = await query(`
-      SELECT 
+    // Buscar entregador por ID usando Supabase
+    const { data: driver, error } = await supabase
+      .from('drivers')
+      .select(`
         id, name, email, phone, vehicle_type, vehicle_plate,
         status, current_location, total_deliveries, average_rating,
         average_delivery_time, created_at, updated_at, last_active_at
-      FROM drivers 
-      WHERE id = $1
-    `, [params.id])
+      `)
+      .eq('id', params.id)
+      .single()
 
-    if (result.rows.length === 0) {
+    if (error || !driver) {
+      console.error('Erro ao buscar entregador:', error)
       return NextResponse.json({
         error: "Entregador não encontrado",
         message: `Não existe entregador com ID ${params.id}`
       }, { status: 404 })
     }
 
-    const driver = result.rows[0]
-
     // Buscar pedidos ativos do entregador
     let currentOrders = []
     if (driver.status === 'busy') {
       try {
-        const ordersResult = await query(
-          "SELECT id FROM orders WHERE driver_id = $1 AND status = 'ON_THE_WAY'",
-          [driver.id]
-        )
-        currentOrders = ordersResult.rows.map((order: any) => order.id)
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('driver_id', driver.id)
+          .eq('status', 'ON_THE_WAY')
+        
+        if (!ordersError && orders) {
+          currentOrders = orders.map((order: any) => order.id)
+        }
       } catch (orderError) {
         console.warn(`[DRIVERS] Erro ao buscar pedidos do entregador ${driver.id}:`, orderError)
       }
@@ -90,122 +84,97 @@ export async function PATCH(
     const data = await request.json()
     const { name, email, phone, vehicleType, vehiclePlate, currentLocation, status } = data
 
-    // Verificar se tabela drivers existe
-    const tableCheck = await query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' AND table_name = 'drivers'
-      ) as table_exists
-    `)
-
-    if (!tableCheck.rows[0].table_exists) {
-      return NextResponse.json({
-        error: "Tabela drivers não encontrada",
-        message: "Execute o script setup-drivers-system.sql no pgAdmin4 primeiro"
-      }, { status: 404 })
-    }
-
-    // Verificar se entregador existe
-    const existsResult = await query(
-      "SELECT id FROM drivers WHERE id = $1",
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (existsResult.rows.length === 0) {
+    // Verificar se entregador existe
+    const { data: existingDriver, error: existsError } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('id', params.id)
+      .single()
+
+    if (existsError || !existingDriver) {
       return NextResponse.json({
         error: "Entregador não encontrado",
         message: `Não existe entregador com ID ${params.id}`
       }, { status: 404 })
     }
 
-    // Construir query de atualização dinamicamente
-    const updateFields = []
-    const updateValues = []
-    let paramCount = 1
+    // Construir objeto de atualização dinamicamente
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
 
     if (name !== undefined) {
-      updateFields.push(`name = $${paramCount}`)
-      updateValues.push(name)
-      paramCount++
+      updateData.name = name
     }
 
     if (email !== undefined) {
-      updateFields.push(`email = $${paramCount}`)
-      updateValues.push(email)
-      paramCount++
+      updateData.email = email
     }
 
     if (phone !== undefined) {
-      updateFields.push(`phone = $${paramCount}`)
-      updateValues.push(phone)
-      paramCount++
+      updateData.phone = phone
     }
 
     if (vehicleType !== undefined) {
-      updateFields.push(`vehicle_type = $${paramCount}`)
-      updateValues.push(vehicleType)
-      paramCount++
+      updateData.vehicle_type = vehicleType
     }
 
     if (vehiclePlate !== undefined) {
-      updateFields.push(`vehicle_plate = $${paramCount}`)
-      updateValues.push(vehiclePlate)
-      paramCount++
+      updateData.vehicle_plate = vehiclePlate
     }
 
     if (currentLocation !== undefined) {
-      updateFields.push(`current_location = $${paramCount}`)
-      updateValues.push(currentLocation)
-      paramCount++
+      updateData.current_location = currentLocation
     }
 
     if (status !== undefined) {
-      updateFields.push(`status = $${paramCount}`)
-      updateValues.push(status)
-      paramCount++
+      updateData.status = status
+      updateData.last_active_at = new Date().toISOString()
     }
 
-    // Sempre atualizar updated_at
-    updateFields.push(`updated_at = CURRENT_TIMESTAMP`)
-
-    // Se há mudança de status, atualizar last_active_at
-    if (status !== undefined) {
-      updateFields.push(`last_active_at = CURRENT_TIMESTAMP`)
-    }
-
-    if (updateFields.length === 0) {
+    // Verificar se há campos para atualizar (além do updated_at)
+    if (Object.keys(updateData).length <= 1) {
       return NextResponse.json({
         error: "Nenhum campo para atualizar",
         message: "Forneça pelo menos um campo para atualizar"
       }, { status: 400 })
     }
 
-    // Adicionar WHERE clause
-    updateValues.push(params.id)
-    const whereClause = `WHERE id = $${paramCount}`
-
-    const updateQuery = `
-      UPDATE drivers 
-      SET ${updateFields.join(', ')}
-      ${whereClause}
-      RETURNING 
+    // Atualizar entregador usando Supabase
+    const { data: updatedDriver, error: updateError } = await supabase
+      .from('drivers')
+      .update(updateData)
+      .eq('id', params.id)
+      .select(`
         id, name, email, phone, vehicle_type, vehicle_plate,
         status, current_location, total_deliveries, average_rating,
         average_delivery_time, created_at, updated_at, last_active_at
-    `
+      `)
+      .single()
 
-    const result = await query(updateQuery, updateValues)
-    const updatedDriver = result.rows[0]
+    if (updateError) {
+      console.error('Erro ao atualizar entregador:', updateError)
+      throw updateError
+    }
 
     // Buscar pedidos atuais se necessário
     let currentOrders = []
     if (updatedDriver.status === 'busy') {
       try {
-        const ordersResult = await query(
-          "SELECT id FROM orders WHERE driver_id = $1 AND status = 'ON_THE_WAY'",
-          [updatedDriver.id]
-        )
-        currentOrders = ordersResult.rows.map((order: any) => order.id)
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('driver_id', updatedDriver.id)
+          .eq('status', 'ON_THE_WAY')
+        
+        if (!ordersError && orders) {
+          currentOrders = orders.map((order: any) => order.id)
+        }
       } catch (orderError) {
         console.warn(`[DRIVERS] Erro ao buscar pedidos:`, orderError)
       }
@@ -224,18 +193,12 @@ export async function PATCH(
   } catch (error: any) {
     console.error(`[DRIVERS] Erro ao atualizar entregador ${params.id}:`, error)
     
-    if (error.code === '23505') {
+    // Verificar se é erro de email duplicado
+    if (error.code === '23505' || (error.message && error.message.includes('duplicate key'))) {
       return NextResponse.json({
         error: "Email já cadastrado",
         message: "Já existe outro entregador com este email"
       }, { status: 400 })
-    }
-
-    if (error.code === 'ECONNREFUSED') {
-      return NextResponse.json({
-        error: "Não foi possível conectar ao PostgreSQL",
-        message: "Verifique se o PostgreSQL está rodando"
-      }, { status: 503 })
     }
 
     return NextResponse.json({
@@ -252,29 +215,19 @@ export async function DELETE(
   try {
     console.log(`[DRIVERS] Iniciando exclusão do entregador ID: ${params.id}`)
 
-    // Verificar se tabela drivers existe
-    const tableCheck = await query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' AND table_name = 'drivers'
-      ) as table_exists
-    `)
-
-    if (!tableCheck.rows[0].table_exists) {
-      console.error('[DRIVERS] Tabela drivers não encontrada')
-      return NextResponse.json({
-        error: "Tabela drivers não encontrada",
-        message: "Execute o script setup-drivers-system.sql no pgAdmin4 primeiro"
-      }, { status: 404 })
-    }
-
-    // Verificar se entregador existe
-    const existsResult = await query(
-      "SELECT id, name, status, total_deliveries FROM drivers WHERE id = $1",
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (existsResult.rows.length === 0) {
+    // Verificar se entregador existe
+    const { data: driver, error: driverError } = await supabase
+      .from('drivers')
+      .select('id, name, status, total_deliveries')
+      .eq('id', params.id)
+      .single()
+
+    if (driverError || !driver) {
       console.error(`[DRIVERS] Entregador ${params.id} não encontrado`)
       return NextResponse.json({
         error: "Entregador não encontrado",
@@ -282,53 +235,40 @@ export async function DELETE(
       }, { status: 404 })
     }
 
-    const driver = existsResult.rows[0]
     console.log(`[DRIVERS] Verificando dependências para ${driver.name}`)
 
-    // Verificar se existe coluna driver_id na tabela orders
-    let hasDriverIdColumn = false
-    try {
-      const columnCheck = await query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.columns 
-          WHERE table_name = 'orders' 
-          AND column_name = 'driver_id' 
-          AND table_schema = 'public'
-        ) as column_exists
-      `)
-      hasDriverIdColumn = columnCheck.rows[0].column_exists
-      console.log(`[DRIVERS] Coluna driver_id existe na tabela orders: ${hasDriverIdColumn}`)
-    } catch (columnError) {
-      console.warn('[DRIVERS] Erro ao verificar coluna driver_id:', columnError)
-    }
-
-    // Verificar pedidos associados se a coluna existir
+    // Verificar pedidos associados
     let activeOrdersCount = 0
     let totalOrdersCount = 0
     let hasOrderHistory = false
 
-    if (hasDriverIdColumn) {
-      try {
-        // Verificar pedidos ativos (em andamento)
-        const activeOrdersResult = await query(
-          "SELECT COUNT(*) as count FROM orders WHERE driver_id = $1 AND status IN ('ON_THE_WAY', 'PREPARING')",
-          [params.id]
-        )
-        activeOrdersCount = parseInt(activeOrdersResult.rows[0].count) || 0
-
-        // Verificar histórico total de pedidos
-        const totalOrdersResult = await query(
-          "SELECT COUNT(*) as count FROM orders WHERE driver_id = $1",
-          [params.id]
-        )
-        totalOrdersCount = parseInt(totalOrdersResult.rows[0].count) || 0
-        hasOrderHistory = totalOrdersCount > 0
-
-        console.log(`[DRIVERS] Entregador ${driver.name}: ${activeOrdersCount} pedidos ativos, ${totalOrdersCount} pedidos no histórico`)
-      } catch (ordersError) {
-        console.warn('[DRIVERS] Erro ao verificar pedidos:', ordersError)
-        // Continuar mesmo com erro na verificação de pedidos
+    try {
+      // Verificar pedidos ativos (em andamento)
+      const { count: activeCount, error: activeError } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('driver_id', params.id)
+        .in('status', ['ON_THE_WAY', 'PREPARING'])
+      
+      if (!activeError) {
+        activeOrdersCount = activeCount || 0
       }
+
+      // Verificar histórico total de pedidos
+      const { count: totalCount, error: totalError } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('driver_id', params.id)
+      
+      if (!totalError) {
+        totalOrdersCount = totalCount || 0
+        hasOrderHistory = totalOrdersCount > 0
+      }
+
+      console.log(`[DRIVERS] Entregador ${driver.name}: ${activeOrdersCount} pedidos ativos, ${totalOrdersCount} pedidos no histórico`)
+    } catch (ordersError) {
+      console.warn('[DRIVERS] Erro ao verificar pedidos:', ordersError)
+      // Continuar mesmo com erro na verificação de pedidos
     }
 
     // REGRA 1: Impedir exclusão se há pedidos ativos
@@ -348,38 +288,34 @@ export async function DELETE(
     if (hasOrderHistory || (driver.total_deliveries && driver.total_deliveries > 0)) {
       console.log(`[DRIVERS] Aplicando soft-delete - entregador tem histórico de entregas`)
       
-      // Verificar se existe coluna 'active' ou 'deleted_at'
+      // Tentar aplicar soft-delete usando coluna 'active' primeiro
       let hasSoftDeleteColumns = false
       try {
-        const softDeleteCheck = await query(`
-          SELECT 
-            EXISTS (
-              SELECT FROM information_schema.columns 
-              WHERE table_name = 'drivers' AND column_name = 'active' AND table_schema = 'public'
-            ) as has_active,
-            EXISTS (
-              SELECT FROM information_schema.columns 
-              WHERE table_name = 'drivers' AND column_name = 'deleted_at' AND table_schema = 'public'
-            ) as has_deleted_at
-        `)
+        const { error: activeUpdateError } = await supabase
+          .from('drivers')
+          .update({ 
+            active: false, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', params.id)
         
-        const result = softDeleteCheck.rows[0]
-        hasSoftDeleteColumns = result.has_active || result.has_deleted_at
-
-        if (result.has_active) {
-          // Usar coluna 'active'
-          await query(
-            "UPDATE drivers SET active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-            [params.id]
-          )
+        if (!activeUpdateError) {
+          hasSoftDeleteColumns = true
           console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'active'`)
-        } else if (result.has_deleted_at) {
-          // Usar coluna 'deleted_at'
-          await query(
-            "UPDATE drivers SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-            [params.id]
-          )
-          console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`)
+        } else {
+          // Tentar com coluna 'deleted_at'
+          const { error: deletedAtUpdateError } = await supabase
+            .from('drivers')
+            .update({ 
+              deleted_at: new Date().toISOString(),
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', params.id)
+          
+          if (!deletedAtUpdateError) {
+            hasSoftDeleteColumns = true
+            console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`)
+          }
         }
       } catch (softDeleteError) {
         console.warn('[DRIVERS] Erro na verificação de soft-delete:', softDeleteError)
@@ -414,30 +350,26 @@ export async function DELETE(
     // REGRA 3: Delete físico apenas se não há histórico
     console.log(`[DRIVERS] Aplicando delete físico - sem histórico de entregas`)
     
-    // Usar transação para garantir consistência
-    await query('BEGIN')
-    
     try {
       // Remove referências em outras tabelas se necessário
-      if (hasDriverIdColumn) {
-        // Se existem referências, remove elas primeiro
-        await query(
-          "UPDATE orders SET driver_id = NULL WHERE driver_id = $1 AND status IN ('CANCELLED', 'DELIVERED')",
-          [params.id]
-        )
-      }
+      // Primeiro, remove referências de pedidos finalizados
+      await supabase
+        .from('orders')
+        .update({ driver_id: null })
+        .eq('driver_id', params.id)
+        .in('status', ['CANCELLED', 'DELIVERED'])
 
       // Remove o entregador
-      const deleteResult = await query(
-        "DELETE FROM drivers WHERE id = $1 RETURNING name",
-        [params.id]
-      )
+      const { error: deleteError } = await supabase
+        .from('drivers')
+        .delete()
+        .eq('id', params.id)
 
-      if (deleteResult.rows.length === 0) {
-        throw new Error('Nenhuma linha foi afetada na exclusão')
+      if (deleteError) {
+        console.error(`[DRIVERS] Erro durante delete físico:`, deleteError)
+        throw deleteError
       }
 
-      await query('COMMIT')
       console.log(`[DRIVERS] Delete físico concluído para ${driver.name}`)
 
       return NextResponse.json({
@@ -449,7 +381,6 @@ export async function DELETE(
       })
 
     } catch (deleteError) {
-      await query('ROLLBACK')
       console.error(`[DRIVERS] Erro durante delete físico:`, deleteError)
       throw deleteError
     }
@@ -457,27 +388,13 @@ export async function DELETE(
   } catch (error: any) {
     console.error(`[DRIVERS] Erro ao processar exclusão do entregador ${params.id}:`, error)
     
-    // Tratamento específico de erros
-    if (error.code === '23503') {
+    // Tratamento específico de erros do Supabase
+    if (error.code === '23503' || (error.message && error.message.includes('foreign key'))) {
       return NextResponse.json({
         error: "Violação de integridade referencial",
         message: "Este entregador possui pedidos associados e não pode ser removido. Os dados históricos devem ser preservados.",
         suggestion: "Desative o entregador em vez de removê-lo."
       }, { status: 400 })
-    }
-
-    if (error.code === 'ECONNREFUSED') {
-      return NextResponse.json({
-        error: "Falha na conexão com o banco de dados",
-        message: "Não foi possível conectar ao PostgreSQL. Verifique se o servidor está rodando."
-      }, { status: 503 })
-    }
-
-    if (error.code === '42P01') {
-      return NextResponse.json({
-        error: "Tabela não encontrada",
-        message: "A estrutura do banco de dados está incompleta. Execute os scripts de migração."
-      }, { status: 500 })
     }
 
     return NextResponse.json({
