@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button"
 import { User } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { useAppSettings } from "@/hooks/use-app-settings"
+import { useSettings } from "@/contexts/settings-context"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function AdminHeader() {
   const { user, logout } = useAuth()
-  const { settings } = useAppSettings()
+  const { settings } = useSettings()
 
   return (
     <header className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6 sticky top-0 z-50">
