@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { verifyAdmin } from "@/lib/auth"
-import bcrypt from "bcryptjs"
 
 // Force dynamic rendering for this route  
 export const dynamic = 'force-dynamic'
@@ -35,31 +34,11 @@ export async function PATCH(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { data: user, error: userError } = await supabase
-      .from('profiles')
-      .select('password_hash')
-      .eq('id', admin.id)
-      .single()
-
-    if (userError || !user) {
-      console.error('Error fetching user:', userError)
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
-    }
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash)
-
-    if (!isCurrentPasswordValid) {
-      return NextResponse.json({ error: "Senha atual incorreta" }, { status: 400 })
-    }
-
-    const newPasswordHash = await bcrypt.hash(newPassword, 12)
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        password_hash: newPasswordHash,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', admin.id)
+    // Usar Supabase Auth para atualizar a senha
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      admin.id,
+      { password: newPassword }
+    )
 
     if (updateError) {
       console.error('Error updating password:', updateError)

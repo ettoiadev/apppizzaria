@@ -5,9 +5,9 @@ Sistema completo de delivery de pizza desenvolvido com Next.js 14 e PostgreSQL.
 ## 🚀 Tecnologias Utilizadas
 
 - **Frontend**: Next.js 14, React 18, TypeScript
-- **Backend**: Next.js API Routes, PostgreSQL direto
-- **Autenticação**: JWT com bcrypt
-- **Banco de Dados**: PostgreSQL direto (sem Supabase)
+- **Backend**: Next.js API Routes, Supabase
+- **Autenticação**: Supabase Auth
+- **Banco de Dados**: Supabase (PostgreSQL)
 - **Styling**: Tailwind CSS, Radix UI
 - **Estado**: React Context API, TanStack Query
 

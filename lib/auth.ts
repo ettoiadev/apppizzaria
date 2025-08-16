@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import { sign, verify } from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 
@@ -9,14 +8,6 @@ const supabase = createClient(
 );
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Idealmente, use uma variável de ambiente
-
-export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
-}
-
-export async function comparePasswords(password: string, hashedPassword: string) {
-  return bcrypt.compare(password, hashedPassword);
-}
 
 export async function createUser({ email, password, full_name, role = 'customer' }: {
   email: string;
