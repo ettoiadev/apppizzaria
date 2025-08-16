@@ -1,44 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Facebook, Instagram, Twitter, Phone, Mail, MapPin } from "lucide-react"
-
-interface AppSettings {
-  restaurant_name?: string
-  description?: string
-  restaurant_phone?: string
-  email?: string
-  restaurant_address?: string
-  logo_url?: string
-}
+import { useSettings } from "@/contexts/settings-context"
 
 export function Footer() {
-  const [settings, setSettings] = useState<AppSettings>({
-    restaurant_name: 'William Disk Pizza',
-    description: 'A melhor pizza da cidade, feita com ingredientes frescos e muito amor.',
-    restaurant_phone: '(11) 99999-9999',
-    email: 'contato@williamdiskpizza.com',
-    restaurant_address: 'Rua das Pizzas, 123 - Centro - São Paulo/SP'
-  })
-
-  useEffect(() => {
-    fetchSettings()
-  }, [])
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch('/api/settings')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.settings) {
-          setSettings(prev => ({ ...prev, ...data.settings }))
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações no footer:', error)
-    }
-  }
+  const { settings } = useSettings()
 
   const restaurantName = settings.restaurant_name || 'William Disk Pizza'
   const currentYear = new Date().getFullYear()

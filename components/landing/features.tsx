@@ -1,35 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Shield, Heart, Star, Zap } from "lucide-react"
-
-interface AppSettings {
-  restaurant_name?: string
-}
+import { useSettings } from "@/contexts/settings-context"
 
 export function Features() {
-  const [settings, setSettings] = useState<AppSettings>({
-    restaurant_name: 'William Disk Pizza'
-  })
-
-  useEffect(() => {
-    fetchSettings()
-  }, [])
-
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch('/api/settings')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.settings) {
-          setSettings(prev => ({ ...prev, ...data.settings }))
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações:', error)
-    }
-  }
+  const { settings } = useSettings()
 
   const features = [
     {
