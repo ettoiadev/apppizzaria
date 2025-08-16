@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,95 +28,74 @@ export async function GET(request: NextRequest) {
 
     console.log(`[CUSTOMER_SEARCH] Termo normalizado: "${normalizedSearchTerm}", Telefone: "${phoneOnlyNumbers}"`)
 
-    // Buscar clientes por nome ou telefone com correspondência estrita
-    const searchQuery = `
-      SELECT 
-        p.id,
-        p.full_name as name,
-        p.phone,
-        p.email,
-        p.created_at,
-        -- Buscar endereço principal
-        (
-          SELECT json_build_object(
-            'id', ca.id,
-            'street', ca.street,
-            'number', ca.number,
-            'complement', ca.complement,
-            'neighborhood', ca.neighborhood,
-            'city', ca.city,
-            'state', ca.state,
-            'zip_code', ca.zip_code,
-            'label', ca.label,
-            'is_default', ca.is_default
-          )
-          FROM customer_addresses ca 
-          WHERE ca.user_id = p.id 
-          ORDER BY ca.is_default DESC, ca.created_at DESC 
-          LIMIT 1
-        ) as primary_address,
-        -- Contar pedidos
-        (
-          SELECT COUNT(*) 
-          FROM orders o 
-          WHERE o.user_id = p.id
-        ) as total_orders
-      FROM profiles p
-      WHERE p.role = 'customer'
-        AND (
-          -- Busca no nome (case insensitive, apenas se o termo não for vazio)
-          (
-            LENGTH($1) > 0 AND 
-            LOWER(p.full_name) LIKE LOWER($2)
-          )
-          OR
-          -- Busca no telefone (apenas números, apenas se o termo não for vazio)
-          (
-            LENGTH($3) > 0 AND 
-            TRANSLATE(p.phone, '()- .', '') LIKE $4
-          )
-        )
-      ORDER BY 
-        -- Priorizar correspondências exatas e por início
-        CASE 
-          WHEN LOWER(p.full_name) = LOWER($5) THEN 1
-          WHEN TRANSLATE(p.phone, '()- .', '') = $6 THEN 1
-          WHEN LOWER(p.full_name) LIKE LOWER($7) THEN 2
-          WHEN TRANSLATE(p.phone, '()- .', '') LIKE $8 THEN 2
-          ELSE 3
-        END,
-        p.created_at DESC
-      LIMIT $9
-    `
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    const searchPattern = `%${normalizedSearchTerm}%`
-    const phonePattern = `%${phoneOnlyNumbers}%`
-    const exactTerm = normalizedSearchTerm
-    const exactPhone = phoneOnlyNumbers
-    const startPattern = `${normalizedSearchTerm}%`
-    const startPhonePattern = `${phoneOnlyNumbers}%`
+    // Buscar clientes por nome ou telefone
+    let query = supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        phone,
+        email,
+        created_at,
+        customer_addresses!inner(
+          id,
+          street,
+          number,
+          complement,
+          neighborhood,
+          city,
+          state,
+          zip_code,
+          label,
+          is_default
+        ),
+        orders(count)
+      `)
+      .eq('role', 'customer')
+      .limit(limit)
 
-    const result = await query(searchQuery, [
-      normalizedSearchTerm,  // $1 - termo normalizado para verificação
-      searchPattern,         // $2 - nome pattern
-      phoneOnlyNumbers,      // $3 - telefone para verificação
-      phonePattern,          // $4 - telefone pattern
-      exactTerm,             // $5 - nome exato
-      exactPhone,            // $6 - telefone exato
-      startPattern,          // $7 - nome começa com
-      startPhonePattern,     // $8 - telefone começa com
-      limit                  // $9 - limit
-    ])
+    // Aplicar filtros de busca
+    if (normalizedSearchTerm.length > 0) {
+      query = query.or(`full_name.ilike.%${normalizedSearchTerm}%,phone.like.%${phoneOnlyNumbers}%`)
+    }
 
-    const rawCustomers = result.rows.map((customer: any) => ({
-      id: customer.id,
-      name: customer.name || 'Nome não informado',
-      phone: customer.phone || '',
-      email: customer.email || '',
-      primaryAddress: customer.primary_address,
-      totalOrders: parseInt(customer.total_orders) || 0,
-      createdAt: customer.created_at
-    }))
+    const { data: customers, error } = await query
+
+    if (error) {
+      throw error
+    }
+
+    const rawCustomers = (customers || []).map((customer: any) => {
+      // Buscar endereço principal (is_default = true) ou o primeiro
+      const primaryAddress = customer.customer_addresses?.find((addr: any) => addr.is_default) || 
+                             customer.customer_addresses?.[0] || null
+      
+      return {
+        id: customer.id,
+        name: customer.full_name || 'Nome não informado',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        primaryAddress: primaryAddress ? {
+          id: primaryAddress.id,
+          street: primaryAddress.street,
+          number: primaryAddress.number,
+          complement: primaryAddress.complement,
+          neighborhood: primaryAddress.neighborhood,
+          city: primaryAddress.city,
+          state: primaryAddress.state,
+          zip_code: primaryAddress.zip_code,
+          label: primaryAddress.label,
+          is_default: primaryAddress.is_default
+        } : null,
+        totalOrders: customer.orders?.[0]?.count || 0,
+        createdAt: customer.created_at
+      }
+    })
 
     console.log(`[CUSTOMER_SEARCH] Clientes brutos encontrados: ${rawCustomers.length}`)
 
@@ -185,13 +164,20 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Verificar se já existe cliente com este telefone
-    const existingCustomer = await query(
-      'SELECT id FROM profiles WHERE phone = $1 AND role = $2',
-      [phone, 'customer']
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (existingCustomer.rows.length > 0) {
+    // Verificar se já existe cliente com este telefone
+    const { data: existingCustomer, error: checkPhoneError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('phone', phone)
+      .eq('role', 'customer')
+      .single()
+
+    if (existingCustomer && !checkPhoneError) {
       return NextResponse.json({ 
         error: "Já existe um cliente cadastrado com este telefone" 
       }, { status: 400 })
@@ -201,30 +187,36 @@ export async function POST(request: NextRequest) {
     const customerEmail = email?.trim() || `cliente_${cleanPhone}@temp.williamdiskpizza.com`
 
     // Verificar se email já existe
-    const existingEmail = await query(
-      'SELECT id FROM profiles WHERE email = $1',
-      [customerEmail]
-    )
+    const { data: existingEmail, error: checkEmailError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', customerEmail)
+      .single()
 
-    if (existingEmail.rows.length > 0) {
+    if (existingEmail && !checkEmailError) {
       return NextResponse.json({ 
         error: "Este e-mail já está cadastrado" 
       }, { status: 400 })
     }
 
-    // Iniciar transação
-    await query('BEGIN')
-
     try {
       // Criar perfil do cliente
-      const profileResult = await query(
-        `INSERT INTO profiles (full_name, phone, email, role, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, NOW(), NOW())
-         RETURNING id, full_name as name, phone, email, created_at`,
-        [name.trim(), phone, customerEmail, 'customer']
-      )
+      const { data: newCustomer, error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          full_name: name.trim(),
+          phone: phone,
+          email: customerEmail,
+          role: 'customer',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id, full_name, phone, email, created_at')
+        .single()
 
-      const newCustomer = profileResult.rows[0]
+      if (profileError || !newCustomer) {
+        throw new Error('Erro ao criar perfil do cliente')
+      }
 
       // Criar endereço se fornecido
       let primaryAddress = null
@@ -248,37 +240,40 @@ export async function POST(request: NextRequest) {
           throw new Error("Estado deve ter 2 caracteres (UF)")
         }
 
-        const addressResult = await query(
-          `INSERT INTO customer_addresses 
-           (user_id, label, street, number, complement, neighborhood, city, state, zip_code, is_default, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-           RETURNING *`,
-          [
-            newCustomer.id,
-            'Endereço Principal',
-            address.street.trim(),
-            address.number.trim(),
-            address.complement?.trim() || '',
-            address.neighborhood.trim(),
-            address.city.trim(),
-            address.state.trim().toUpperCase(),
-            cleanZipCode,
-            true // primeiro endereço é sempre padrão
-          ]
-        )
+        const { data: addressData, error: addressError } = await supabase
+          .from('customer_addresses')
+          .insert({
+            user_id: newCustomer.id,
+            label: 'Endereço Principal',
+            street: address.street.trim(),
+            number: address.number.trim(),
+            complement: address.complement?.trim() || '',
+            neighborhood: address.neighborhood.trim(),
+            city: address.city.trim(),
+            state: address.state.trim().toUpperCase(),
+            zip_code: cleanZipCode,
+            is_default: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('*')
+          .single()
 
-        primaryAddress = addressResult.rows[0]
+        if (addressError) {
+          throw new Error('Erro ao criar endereço do cliente')
+        }
+
+        primaryAddress = addressData
       }
 
-      // Commit da transação
-      await query('COMMIT')
+      // Cliente criado com sucesso
 
       console.log("[CUSTOMER_SEARCH] Cliente criado com sucesso:", newCustomer.id)
 
       return NextResponse.json({
         customer: {
           id: newCustomer.id,
-          name: newCustomer.name,
+          name: newCustomer.full_name,
           phone: newCustomer.phone,
           email: newCustomer.email,
           primaryAddress: primaryAddress ? {
@@ -299,7 +294,6 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (innerError: any) {
-      await query('ROLLBACK')
       throw innerError
     }
 
@@ -309,4 +303,4 @@ export async function POST(request: NextRequest) {
       error: error.message || "Erro interno do servidor" 
     }, { status: 500 })
   }
-} 
+}

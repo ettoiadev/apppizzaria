@@ -1,22 +1,32 @@
 import { NextResponse } from 'next/server'
-import { query } from "@/lib/db"
+import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
 
 // GET - Buscar um produto específico
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const result = await query(
-      'SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = $1',
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (result.rows.length === 0) {
+    // Buscar produto com categoria
+    const { data: product, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        categories!inner(name)
+      `)
+      .eq('id', params.id)
+      .single()
+
+    if (error || !product) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
     }
 
-    const product = result.rows[0]
     const normalizedProduct = {
       ...product,
+      category_name: product.categories?.name,
       categoryId: product.category_id,
       available: Boolean(product.available),
       showImage: Boolean(product.show_image ?? true),
@@ -49,42 +59,33 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       )
     }
 
-    // Atualizar produto
-    const result = await query(
-      `
-      UPDATE products 
-      SET name = $1, 
-          description = $2, 
-          price = $3, 
-          category_id = $4, 
-          image = $5,
-          available = $6,
-          show_image = $7,
-          sizes = $8,
-          toppings = $9,
-          updated_at = NOW()
-      WHERE id = $10
-      RETURNING *
-      `,
-      [
-        name, 
-        description, 
-        price, 
-        finalCategoryId, 
-        image, 
-        available, 
-        showImage ?? true, 
-        sizes ? JSON.stringify(sizes) : null,
-        toppings ? JSON.stringify(toppings) : null,
-        params.id
-      ]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (result.rows.length === 0) {
+    // Atualizar produto
+    const { data: product, error } = await supabase
+      .from('products')
+      .update({
+        name,
+        description,
+        price,
+        category_id: finalCategoryId,
+        image,
+        available,
+        show_image: showImage ?? true,
+        sizes: sizes ? JSON.stringify(sizes) : null,
+        toppings: toppings ? JSON.stringify(toppings) : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', params.id)
+      .select()
+      .single()
+
+    if (error || !product) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
     }
-
-    const product = result.rows[0]
     const normalizedProduct = {
       ...product,
       categoryId: product.category_id,
@@ -109,9 +110,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     console.log('PATCH body received:', body)
     console.log('Product ID:', params.id)
     
-    const updateFields: string[] = []
-    const updateValues: any[] = []
-    let paramCounter = 1
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Suportar tanto categoryId quanto category_id
     const processedBody = { ...body }
@@ -126,47 +128,39 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       delete processedBody.showImage
     }
 
-    // Construir query dinâmica baseada nos campos fornecidos
+    // Preparar dados de atualização
+    const updateData: any = { updated_at: new Date().toISOString() }
+    const validFields = ["name", "description", "price", "category_id", "image", "available", "show_image", "sizes", "toppings"]
+    
     Object.entries(processedBody).forEach(([key, value]) => {
-      if (["name", "description", "price", "category_id", "image", "available", "show_image", "sizes", "toppings"].includes(key)) {
-        updateFields.push(`${key} = $${paramCounter}`)
+      if (validFields.includes(key)) {
         // Converter arrays para JSON se necessário
         if ((key === 'sizes' || key === 'toppings') && Array.isArray(value)) {
-          updateValues.push(JSON.stringify(value))
+          updateData[key] = JSON.stringify(value)
         } else {
-          updateValues.push(value)
+          updateData[key] = value
         }
-        paramCounter++
       }
     })
 
-    if (updateFields.length === 0) {
+    if (Object.keys(updateData).length === 1) { // Apenas updated_at
       return NextResponse.json({ error: "Nenhum campo válido para atualização" }, { status: 400 })
     }
 
-    // Adicionar id como último parâmetro
-    updateValues.push(params.id)
+    console.log('Update data:', updateData)
 
-    console.log('SQL fields:', updateFields)
-    console.log('SQL values:', updateValues)
+    const { data: product, error } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', params.id)
+      .select()
+      .single()
 
-    const result = await query(
-      `
-      UPDATE products 
-      SET ${updateFields.join(", ")},
-          updated_at = NOW()
-      WHERE id = $${paramCounter}
-      RETURNING *
-      `,
-      updateValues
-    )
-
-    if (result.rows.length === 0) {
+    if (error || !product) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
     }
 
     // Normalizar resposta
-    const product = result.rows[0]
     const normalizedProduct = {
       ...product,
       categoryId: product.category_id,
@@ -190,21 +184,34 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 // DELETE - Excluir um produto
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    // Primeiro, verificar se o produto existe
-    const checkResult = await query(
-      'SELECT id FROM products WHERE id = $1',
-      [params.id]
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    if (checkResult.rows.length === 0) {
+    // Primeiro, verificar se o produto existe
+    const { data: existingProduct, error: checkError } = await supabase
+      .from('products')
+      .select('id')
+      .eq('id', params.id)
+      .single()
+
+    if (checkError || !existingProduct) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
     }
 
     // Em vez de excluir, marcar como inativo
-    const result = await query(
-      'UPDATE products SET active = false, updated_at = NOW() WHERE id = $1 RETURNING *',
-      [params.id]
-    )
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({ 
+        active: false, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', params.id)
+
+    if (updateError) {
+      throw updateError
+    }
 
     return NextResponse.json({ message: "Produto excluído com sucesso" })
   } catch (error) {
