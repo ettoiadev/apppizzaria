@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { getSettings } from '@/lib/supabase'
 
 // API pública para buscar configurações que podem ser exibidas na página inicial
 export async function GET() {
@@ -28,19 +28,35 @@ export async function GET() {
       'freeDeliverySubtext'
     ]
 
-    const result = await query(
-      `SELECT setting_key, setting_value 
-       FROM admin_settings 
-       WHERE setting_key = ANY($1)
-       ORDER BY setting_key`,
-      [publicSettings]
-    )
+    // Buscar todas as configurações do Supabase
+    const allSettings = await getSettings();
+    
+    // Filtrar apenas configurações públicas
+    const publicSettingsData = allSettings.filter(row => 
+      publicSettings.includes(row.setting_key)
+    );
 
-    // Converter para objeto para facilitar o uso
-    const settings: Record<string, any> = {}
-    result.rows.forEach((row) => {
-      settings[row.setting_key] = row.setting_value
-    })
+    // Converter para objeto
+    const settings: Record<string, any> = {};
+    publicSettingsData.forEach((row: any) => {
+      const { setting_key, setting_value, setting_type } = row;
+      
+      // Converter valor baseado no tipo
+      let value = setting_value;
+      if (setting_type === 'number') {
+        value = parseFloat(setting_value);
+      } else if (setting_type === 'boolean') {
+        value = setting_value === 'true';
+      } else if (setting_type === 'json') {
+        try {
+          value = JSON.parse(setting_value);
+        } catch {
+          value = setting_value;
+        }
+      }
+      
+      settings[setting_key] = value;
+    });
 
     // Adicionar configurações padrão se não existirem
     const defaultSettings = {
@@ -82,4 +98,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-} 
+}

@@ -1,9 +1,24 @@
 import { Pool } from 'pg';
 
-// Configuração básica do PostgreSQL
+// Configuração do Supabase PostgreSQL
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/williamdiskpizza",
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 10,
+  idleTimeoutMillis: 20000,
+  connectionTimeoutMillis: 5000,
+  statement_timeout: 30000,
+  query_timeout: 30000,
+  application_name: 'williamdiskpizza'
 });
+
+// Verificar se a DATABASE_URL está configurada
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL não está configurada no arquivo .env');
+  process.exit(1);
+}
 
 // Controle de logs baseado em ambiente
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -80,4 +95,4 @@ export function debugQuery(text: string, params?: any[]) {
 }
 
 // Exporta o pool para uso direto se necessário
-export { pool }; 
+export { pool };
