@@ -22,21 +22,15 @@ export async function GET(request: NextRequest) {
       .from('orders')
       .select(`
         *,
-        profiles:user_id(
-          full_name,
-          phone
-        ),
         order_items(
           id,
           product_id,
-          name,
           quantity,
           unit_price,
           total_price,
           size,
           toppings,
           special_instructions,
-          half_and_half,
           products:product_id(
             name,
             description,
@@ -91,14 +85,29 @@ export async function GET(request: NextRequest) {
         .reduce((sum, o) => sum + Number.parseFloat(o.total), 0) || 0,
     }
 
+    // Buscar dados dos profiles para os pedidos que têm user_id
+    const userIds = orders?.filter(order => order.user_id).map(order => order.user_id) || []
+    let profilesData = []
+    
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone')
+        .in('id', userIds)
+      profilesData = profiles || []
+    }
+
     // Processar orders para adicionar campos calculados
-    const processedOrders = orders?.map(order => ({
-      ...order,
-      customer_display_name: order.profiles?.full_name || order.customer_name,
-      customer_display_phone: order.delivery_phone || order.profiles?.phone,
-      full_name: order.profiles?.full_name,
-      phone: order.profiles?.phone
-    })) || []
+    const processedOrders = orders?.map(order => {
+      const profile = profilesData.find(p => p.id === order.user_id)
+      return {
+        ...order,
+        customer_display_name: profile?.full_name || order.customer_name,
+        customer_display_phone: order.delivery_phone || profile?.phone,
+        full_name: profile?.full_name,
+        phone: profile?.phone
+      }
+    }) || []
 
     return NextResponse.json({
       orders: processedOrders,
