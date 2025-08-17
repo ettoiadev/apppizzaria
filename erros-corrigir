@@ -1,0 +1,5 @@
+Corrija os erros apresentados no log, lembre-se que estamos usando banco de dados unica e exclusivamente no supabase, corrija os bugs, erros, rotas, banco de dados com segurança sem quebrar a aplicação.
+
+
+
+NÃO ALTERE QUALQUER FUNCIONALIDADE/INTERFACE/FLUXO EXISTENTE que não esteja diretamente relacionado ao problema descrito acima.

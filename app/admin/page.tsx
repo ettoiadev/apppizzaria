@@ -11,7 +11,7 @@ export default function AdminPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== "admin")) {
+    if (!isLoading && (!user || user.role !== "ADMIN")) {
       router.push("/admin/login")
     }
   }, [user, isLoading, router])
@@ -20,7 +20,7 @@ export default function AdminPage() {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
   }
 
-  if (!user || user.role !== "admin") {
+  if (!user || user.role !== "ADMIN") {
     return null
   }
 
