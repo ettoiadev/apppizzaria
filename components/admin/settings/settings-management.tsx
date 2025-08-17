@@ -11,6 +11,7 @@ import { SecuritySettings } from "./security-settings"
 import { AdminProfile } from "./admin-profile"
 import { Settings, Palette, Bike, CreditCard, Bell, Shield, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from '@/lib/logger'
 
 export function SettingsManagement() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -57,7 +58,7 @@ export function SettingsManagement() {
       } else {
         // Log apenas em desenvolvimento
         if (process.env.NODE_ENV === 'development') {
-          console.warn("Settings API não disponível, usando configurações padrão")
+          logger.warn('MODULE', "Settings API não disponível, usando configurações padrão")
         }
         toast({
           title: "Aviso",
@@ -68,7 +69,7 @@ export function SettingsManagement() {
     } catch (error) {
       // Log apenas em desenvolvimento
       if (process.env.NODE_ENV === 'development') {
-        console.error("Erro ao carregar configurações:", error)
+        logger.error('MODULE', "Erro ao carregar configurações:", error)
       }
       toast({
         title: "Erro",
@@ -110,7 +111,7 @@ export function SettingsManagement() {
     } catch (error) {
       // Log apenas em desenvolvimento
       if (process.env.NODE_ENV === 'development') {
-        console.error("Erro ao salvar configurações:", error)
+        logger.error('MODULE', "Erro ao salvar configurações:", error)
       }
       toast({
         title: "Erro",

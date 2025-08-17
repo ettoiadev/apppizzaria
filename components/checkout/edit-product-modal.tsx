@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Minus, Plus, Pizza } from "lucide-react"
 import type { Product, CartItem } from "@/types"
+import { logger } from '@/lib/logger'
 
 interface EditProductModalProps {
   product: Product
@@ -73,7 +74,7 @@ export function EditProductModal({
         setAvailablePizzas(pizzas)
       }
     } catch (error) {
-      console.error('Erro ao carregar pizzas:', error)
+      logger.error('MODULE', 'Erro ao carregar pizzas:', error)
     }
   }
 

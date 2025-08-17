@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sanitizeInput } from "@/lib/auth-security"
 import jwt from "jsonwebtoken"
+import { logger } from '@/lib/logger'
 
 // Rate limiting simples (em produção, usar Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
@@ -241,7 +242,7 @@ export function securityLogger() {
     const isSensitive = sensitiveEndpoints.some(endpoint => url.includes(endpoint))
     
     if (isSensitive) {
-      console.log(`[SECURITY] ${new Date().toISOString()} - ${method} ${url} - IP: ${ip} - UA: ${userAgent}`)
+      logger.security(`[SECURITY] ${new Date().toISOString()} - ${method} ${url} - IP: ${ip} - UA: ${userAgent}`)
     }
     
     return null // Sempre permitir (apenas log)

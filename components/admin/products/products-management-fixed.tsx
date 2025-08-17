@@ -255,7 +255,7 @@ export function ProductsManagement() {
       const url = editingCategory ? `/api/categories/${editingCategory.id}` : "/api/categories"
       const method = editingCategory ? "PUT" : "POST"
 
-      console.log('Enviando requisição:', { url, method, data: categoryData })
+      logger.debug('MODULE', 'Enviando requisição:', { url, method, data: categoryData })
 
       const response = await fetch(url, {
         method,
@@ -263,11 +263,11 @@ export function ProductsManagement() {
         body: JSON.stringify(categoryData),
       })
 
-      console.log('Resposta recebida:', response.status, response.statusText)
+      logger.debug('MODULE', 'Resposta recebida:', response.status, response.statusText)
 
       if (response.ok) {
         const savedCategory = await response.json()
-        console.log('Dados salvos:', savedCategory)
+        logger.debug('MODULE', 'Dados salvos:', savedCategory)
         
         // Normalizar resposta (pode vir como objeto direto ou dentro de um wrapper)
         const categoryData = savedCategory.category || savedCategory
@@ -294,7 +294,7 @@ export function ProductsManagement() {
         setCategoryModalOpen(false)
       } else {
         const errorData = await response.json()
-        console.error('Erro da API:', errorData)
+        logger.error('MODULE', 'Erro da API:', errorData)
         throw new Error(errorData.error || "Falha ao salvar categoria")
       }
     } catch (error) {

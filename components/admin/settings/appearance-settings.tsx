@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Save, Palette, Monitor, Sun, Moon, Upload, X, Plus, Trash2, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { logger } from '@/lib/logger'
 
 // Interface for team member
 interface TeamMember {
@@ -191,7 +192,7 @@ export function AppearanceSettings({ settings: initialSettings, onSave, onMarkUn
           ),
         )
       } catch (error) {
-        console.error("Error processing image:", error)
+        logger.error('MODULE', "Error processing image:", error)
       } finally {
         setProcessingImageId(null)
       }
@@ -243,7 +244,7 @@ export function AppearanceSettings({ settings: initialSettings, onSave, onMarkUn
         const processedFile = await processImage(file)
         setSettings((prev) => ({ ...prev, aboutHeroImage: processedFile }))
       } catch (error) {
-        console.error("Error processing image:", error)
+        logger.error('MODULE', "Error processing image:", error)
       } finally {
         setIsLoading(false)
       }
@@ -259,7 +260,7 @@ export function AppearanceSettings({ settings: initialSettings, onSave, onMarkUn
         const processedFile = await processImage(file)
         setSettings((prev) => ({ ...prev, aboutStoryImage: processedFile }))
       } catch (error) {
-        console.error("Error processing image:", error)
+        logger.error('MODULE', "Error processing image:", error)
       } finally {
         setIsLoading(false)
       }
@@ -286,10 +287,10 @@ export function AppearanceSettings({ settings: initialSettings, onSave, onMarkUn
         teamMembers: teamMembers.map(({ image, ...member }) => member) // Remove File objects
       }
       
-      console.log("Saving appearance settings:", finalSettings)
+      logger.debug('MODULE', "Saving appearance settings:", finalSettings)
       await onSave(finalSettings)
     } catch (error) {
-      console.error("Error saving appearance settings:", error)
+      logger.error('MODULE', "Error saving appearance settings:", error)
     } finally {
       setIsLoading(false)
     }

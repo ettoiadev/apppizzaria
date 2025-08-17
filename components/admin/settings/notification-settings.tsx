@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Save, Bell, Mail, Smartphone, MessageSquare } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface NotificationSettingsProps {
   settings: Record<string, any>
@@ -42,10 +43,10 @@ export function NotificationSettings({ settings: initialSettings, onSave, onMark
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      console.log("Saving notification settings:", settings)
+      logger.debug('MODULE', "Saving notification settings:", settings)
       await onSave(settings)
     } catch (error) {
-      console.error("Error saving notification settings:", error)
+      logger.error('MODULE', "Error saving notification settings:", error)
     } finally {
       setIsLoading(false)
     }

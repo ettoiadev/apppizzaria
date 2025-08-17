@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { DollarSign, ShoppingBag, Users, Clock, TrendingUp, TrendingDown, Package, AlertCircle } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface DashboardStats {
   dailySales: number
@@ -83,7 +84,7 @@ export function Dashboard() {
       
       // Log apenas em desenvolvimento
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Dashboard - Calculando crescimento:', {
+        logger.debug('MODULE', '🔍 Dashboard - Calculando crescimento:', {
           hoje: todayString,
           ontem: yesterdayString,
           totalPedidos: orders.length
@@ -112,7 +113,7 @@ export function Dashboard() {
 
       // Log apenas em desenvolvimento
       if (process.env.NODE_ENV === 'development') {
-        console.log('💰 Dashboard - Vendas calculadas:', {
+        logger.debug('MODULE', '💰 Dashboard - Vendas calculadas:', {
           vendasHoje: dailySales,
           vendasOntem: yesterdaySales,
           pedidosHoje: todayOrders.length,
@@ -136,7 +137,7 @@ export function Dashboard() {
       
       // Log apenas em desenvolvimento
       if (process.env.NODE_ENV === 'development') {
-        console.log('📈 Dashboard - Crescimento calculado:', {
+        logger.debug('MODULE', '📈 Dashboard - Crescimento calculado:', {
           crescimento: revenueGrowth.toFixed(1) + '%'
         })
       }

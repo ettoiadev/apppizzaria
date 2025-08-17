@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, UserPlus } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface AdminRegisterModalProps {
   isOpen: boolean
@@ -48,7 +49,7 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
         setRegistrationAllowed(true)
       }
     } catch (error) {
-      console.error("Error checking registration status:", error)
+      logger.error('MODULE', "Error checking registration status:", error)
       // On error, assume registration is allowed (default behavior)
       setRegistrationAllowed(true)
     }
@@ -147,7 +148,7 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
         setSuccess("")
       }, 2000)
     } catch (error) {
-      console.error("Registration error:", error)
+      logger.error('MODULE', "Registration error:", error)
       setError("Erro interno do servidor")
     } finally {
       setIsLoading(false)

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { verifyAdmin } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 // Force dynamic rendering for this route  
 export const dynamic = 'force-dynamic'
@@ -41,7 +42,7 @@ export async function PATCH(request: NextRequest) {
     )
 
     if (updateError) {
-      console.error('Error updating password:', updateError)
+      logger.error('MODULE', 'Error updating password:', updateError)
       return NextResponse.json({ error: "Erro ao atualizar senha" }, { status: 500 })
     }
 

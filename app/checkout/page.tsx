@@ -9,6 +9,7 @@ import { OrderSummary } from "@/components/checkout/order-summary"
 import { useCart } from "@/contexts/cart-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from '@/lib/logger'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -18,9 +19,9 @@ export default function CheckoutPage() {
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  console.log("CheckoutPage - Current user:", user)
-  console.log("CheckoutPage - Cart items:", items)
-  console.log("CheckoutPage - Cart total:", total)
+  logger.debug('MODULE', "CheckoutPage - Current user:", user)
+  logger.debug('MODULE', "CheckoutPage - Cart items:", items)
+  logger.debug('MODULE', "CheckoutPage - Cart total:", total)
 
   const handleOrderSubmit = async (orderData: any) => {
     if (!user) {
@@ -35,7 +36,7 @@ export default function CheckoutPage() {
 
     try {
       setIsSubmitting(true)
-      console.log("CheckoutPage - Submitting order:", orderData)
+      logger.debug('MODULE', "CheckoutPage - Submitting order:", orderData)
 
       // Calcular taxa de entrega
       const deliveryFee = total >= 50 ? 0 : 5.9
@@ -72,7 +73,7 @@ export default function CheckoutPage() {
         delivery_instructions: orderData.notes,
       }
 
-      console.log("CheckoutPage - Final order payload:", orderPayload)
+      logger.debug('MODULE', "CheckoutPage - Final order payload:", orderPayload)
 
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -85,25 +86,25 @@ export default function CheckoutPage() {
       let result
       try {
         result = await response.json()
-        console.log("CheckoutPage - Order response:", result)
+        logger.debug('MODULE', "CheckoutPage - Order response:", result)
       } catch (jsonError) {
-        console.error("Erro ao processar resposta JSON:", jsonError)
+        logger.error('MODULE', "Erro ao processar resposta JSON:", jsonError)
         throw new Error("Erro ao processar resposta do servidor")
       }
 
       if (!response.ok) {
-        console.error("Erro na resposta:", response.status, result)
+        logger.error('MODULE', "Erro na resposta:", response.status, result)
         
         // Mostrar detalhes do erro se disponíveis
         if (result.details) {
-          console.error("Detalhes do erro:", result.details)
+          logger.error('MODULE', "Detalhes do erro:", result.details)
         }
         
         throw new Error(result.error || "Erro ao criar pedido")
       }
 
       if (!result.id) {
-        console.error("Resposta sem ID do pedido:", result)
+        logger.error('MODULE', "Resposta sem ID do pedido:", result)
         throw new Error("Pedido criado mas sem ID de retorno")
       }
 
@@ -131,7 +132,7 @@ export default function CheckoutPage() {
         router.push(`/pedido/${result.id}`)
       }, 2000)
     } catch (error) {
-      console.error("Erro ao finalizar pedido:", error)
+      logger.error('MODULE', "Erro ao finalizar pedido:", error)
       
       // Tratamento específico de erros
       let errorMessage = "Tente novamente em alguns instantes"
@@ -150,7 +151,7 @@ export default function CheckoutPage() {
       
       // Se o erro tem detalhes do backend, mostrar também
       if (error instanceof Error && error.message.includes("details")) {
-        console.error("Erro detalhado do backend disponível no console")
+        logger.error('MODULE', "Erro detalhado do backend disponível no console")
       }
       
       toast({

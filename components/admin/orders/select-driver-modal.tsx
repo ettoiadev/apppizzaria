@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Bike, Phone, MapPin, RefreshCw, Star, Package, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from '@/lib/logger'
 
 interface Driver {
   id: string
@@ -44,7 +45,7 @@ export function SelectDriverModal({ orderId, isOpen, onClose, onAssign }: Select
   } = useQuery<Driver[]>({
     queryKey: ["available-drivers"],
     queryFn: async () => {
-      console.log("Buscando entregadores disponíveis...")
+      logger.debug('MODULE', "Buscando entregadores disponíveis...")
       
       const response = await fetch('/api/drivers?status=available')
       
@@ -53,7 +54,7 @@ export function SelectDriverModal({ orderId, isOpen, onClose, onAssign }: Select
       }
       
       const data = await response.json()
-      console.log("Entregadores disponíveis encontrados:", data.drivers?.length || 0)
+      logger.debug('MODULE', "Entregadores disponíveis encontrados:", data.drivers?.length || 0)
       
       return data.drivers || []
     },
@@ -64,7 +65,7 @@ export function SelectDriverModal({ orderId, isOpen, onClose, onAssign }: Select
   // Mutation para atribuir entregador ao pedido
   const assignDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
-      console.log("Atribuindo entregador:", { orderId, driverId })
+      logger.debug('MODULE', "Atribuindo entregador:", { orderId, driverId })
       
       const response = await fetch(`/api/orders/${orderId}/assign-driver`, {
         method: 'PATCH',

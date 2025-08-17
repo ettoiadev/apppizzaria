@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Upload, X } from "lucide-react"
 import type { Category } from "@/types"
+import { logger } from '@/lib/logger'
 
 interface CategoryModalProps {
   open: boolean
@@ -110,7 +111,7 @@ export function CategoryModal({ open, onOpenChange, category, onSave }: Category
       // Update form data with the processed image
       setFormData((prev) => ({ ...prev, image: previewUrl }))
     } catch (error) {
-      console.error("Error processing image:", error)
+      logger.error('MODULE', "Error processing image:", error)
     } finally {
       setIsProcessing(false)
     }

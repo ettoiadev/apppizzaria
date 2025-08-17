@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Customer, CustomerAddress, ViaCEPResponse } from '../types';
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger'
 
 export function useCustomer() {
   const [customerName, setCustomerName] = useState('');
@@ -46,14 +47,14 @@ export function useCustomer() {
         .limit(5);
 
       if (error) {
-        console.error('Erro ao buscar clientes:', error);
+        logger.error('MODULE', 'Erro ao buscar clientes:', error);
         return;
       }
 
       setCustomerSuggestions(data || []);
       setShowCustomerSuggestions(true);
     } catch (error) {
-      console.error('Erro ao buscar clientes:', error);
+      logger.error('MODULE', 'Erro ao buscar clientes:', error);
     } finally {
       setIsSearchingCustomers(false);
     }
@@ -116,7 +117,7 @@ export function useCustomer() {
         }));
       }
     } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
+      logger.error('MODULE', 'Erro ao buscar CEP:', error);
     }
   };
 

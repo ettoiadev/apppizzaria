@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== POST /api/orders/manual - INÍCIO ===")
+    logger.debug('MODULE', "=== POST /api/orders/manual - INÍCIO ===")
     
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     )
     
     const body = await request.json()
-    console.log("POST /api/orders/manual - Request body:", JSON.stringify(body, null, 2))
+    logger.debug('MODULE', "POST /api/orders/manual - Request body:", JSON.stringify(body, null, 2))
 
     // Extrair dados específicos para pedidos manuais
     const items = body.items || []
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Definir endereço baseado no tipo se não fornecido
     const finalDeliveryAddress = deliveryAddress || (orderType === "balcao" ? "Manual (Balcão)" : "Manual (Telefone)")
 
-    console.log("Dados extraídos para pedido manual:", {
+    logger.debug('MODULE', "Dados extraídos para pedido manual:", {
       items_count: items.length,
       total,
       subtotal,
@@ -90,10 +91,10 @@ export async function POST(request: NextRequest) {
       throw new Error("Cliente não encontrado ou inválido")
     }
 
-    console.log("Cliente encontrado:", customer.full_name)
+    logger.debug('MODULE', "Cliente encontrado:", customer.full_name)
 
     // Criar pedido manual
-    console.log("Criando pedido manual...")
+    logger.debug('MODULE', "Criando pedido manual...")
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -118,10 +119,10 @@ export async function POST(request: NextRequest) {
       throw new Error("Falha ao criar pedido manual")
     }
 
-    console.log("Pedido manual criado com sucesso! ID:", order.id)
+    logger.debug('MODULE', "Pedido manual criado com sucesso! ID:", order.id)
 
     // Inserir itens do pedido
-    console.log(`Inserindo ${items.length} itens no pedido manual...`)
+    logger.debug('MODULE', `Inserindo ${items.length} itens no pedido manual...`)
     
     const orderItems = []
     
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
         product_id = product_id.toString().replace(/--+$/, '').trim()
       }
 
-      console.log(`Preparando item ${i + 1}:`, {
+      logger.debug('MODULE', `Preparando item ${i + 1}:`, {
         product_id,
         name: item.name,
         quantity,
@@ -181,9 +182,9 @@ export async function POST(request: NextRequest) {
       throw new Error(`Falha ao inserir itens do pedido: ${itemsError.message}`)
     }
 
-    console.log(`${items.length} itens inseridos com sucesso`)
+    logger.debug('MODULE', `${items.length} itens inseridos com sucesso`)
 
-    console.log("Pedido manual criado com sucesso!")
+    logger.debug('MODULE', "Pedido manual criado com sucesso!")
 
     // Retornar resposta de sucesso
     return NextResponse.json({
@@ -199,10 +200,10 @@ export async function POST(request: NextRequest) {
       message: `Pedido manual ${orderType === 'balcao' ? '(Balcão)' : '(Telefone)'} criado com sucesso!`
     })
   } catch (error: any) {
-    console.error("=== ERRO COMPLETO NO POST /api/orders/manual ===")
-    console.error("Tipo:", error.constructor.name)
-    console.error("Mensagem:", error.message)
-    console.error("Stack:", error.stack)
+    logger.error('MODULE', "=== ERRO COMPLETO NO POST /api/orders/manual ===")
+    logger.error('MODULE', "Tipo:", error.constructor.name)
+    logger.error('MODULE', "Mensagem:", error.message)
+    logger.error('MODULE', "Stack:", error.stack)
     
     return NextResponse.json({ 
       error: error.message || "Erro interno do servidor ao criar pedido manual",

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Upload, Save, MapPin, Phone, Mail, Clock, X, Zap, Bike } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface GeneralSettingsProps {
   settings: Record<string, any>
@@ -217,7 +218,7 @@ export function GeneralSettings({ settings: initialSettings, onSave, onMarkUnsav
         setSettings((prev) => ({ ...prev, heroImage: processedFile }))
         if (onMarkUnsaved) onMarkUnsaved()
       } catch (error) {
-        console.error("Error processing hero image:", error)
+        logger.error('MODULE', "Error processing hero image:", error)
       } finally {
         setIsProcessingHeroImage(false)
       }
@@ -274,11 +275,11 @@ export function GeneralSettings({ settings: initialSettings, onSave, onMarkUnsav
             }
           }
         } catch (logoError) {
-          console.error("Error uploading logo:", logoError)
+          logger.error('MODULE', "Error uploading logo:", logoError)
         }
       }
       
-      console.log("Saving general settings:", settingsToSave)
+      logger.debug('MODULE', "Saving general settings:", settingsToSave)
       const success = await onSave(settingsToSave)
       
       if (success) {
@@ -286,7 +287,7 @@ export function GeneralSettings({ settings: initialSettings, onSave, onMarkUnsav
         setOriginalSettings({ ...settings })
       }
     } catch (error) {
-      console.error("Error saving general settings:", error)
+      logger.error('MODULE', "Error saving general settings:", error)
     } finally {
       setIsLoading(false)
     }

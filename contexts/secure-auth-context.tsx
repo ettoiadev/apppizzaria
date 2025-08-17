@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { isTokenValid, sanitizeInput, validatePasswordStrength, isCommonPassword } from "@/lib/auth-security"
+import { logger } from '@/lib/logger'
 
 interface User {
   id: string
@@ -55,7 +56,7 @@ export function SecureAuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user)
       }
     } catch (error) {
-      console.error("Erro ao verificar status de autenticação:", error)
+      logger.error('MODULE', "Erro ao verificar status de autenticação:", error)
     } finally {
       setIsLoading(false)
     }
@@ -121,7 +122,7 @@ export function SecureAuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
       })
     } catch (error) {
-      console.error("Erro ao fazer logout:", error)
+      logger.error('MODULE', "Erro ao fazer logout:", error)
     } finally {
       setUser(null)
       router.push("/")
@@ -189,7 +190,7 @@ export function SecureAuthProvider({ children }: { children: ReactNode }) {
       }
       return false
     } catch (error) {
-      console.error("Erro ao renovar token:", error)
+      logger.error('MODULE', "Erro ao renovar token:", error)
       return false
     }
   }

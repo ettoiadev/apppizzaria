@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, RefreshCw } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useEffect } from "react"
+import { logger } from '@/lib/logger'
 
 export default function OrderPage() {
   const params = useParams()
@@ -17,14 +18,14 @@ export default function OrderPage() {
   const { user, isLoading: authLoading } = useAuth()
   const orderId = params.id as string
 
-  console.log("OrderPage - Order ID:", orderId)
-  console.log("OrderPage - Current user:", user)
-  console.log("OrderPage - Auth loading:", authLoading)
+  logger.debug('MODULE', "OrderPage - Order ID:", orderId)
+  logger.debug('MODULE', "OrderPage - Current user:", user)
+  logger.debug('MODULE', "OrderPage - Auth loading:", authLoading)
 
   // Redirecionar se não estiver logado APENAS após terminar o carregamento
   useEffect(() => {
     if (!authLoading && !user) {
-      console.log("OrderPage - Redirecionando para login (usuário não autenticado)")
+      logger.debug('MODULE', "OrderPage - Redirecionando para login (usuário não autenticado)")
       router.push("/login?redirect=" + encodeURIComponent(`/pedido/${orderId}`))
     }
   }, [user, authLoading, router, orderId])
@@ -37,14 +38,14 @@ export default function OrderPage() {
   } = useQuery({
     queryKey: ["order", orderId],
     queryFn: async () => {
-      console.log("OrderPage - Fetching order:", orderId)
+      logger.debug('MODULE', "OrderPage - Fetching order:", orderId)
       const response = await fetch(`/api/orders/${orderId}`)
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || "Erro ao carregar pedido")
       }
       const data = await response.json()
-      console.log("OrderPage - Order data:", data)
+      logger.debug('MODULE', "OrderPage - Order data:", data)
       return data
     },
     refetchInterval: 30000, // Atualiza a cada 30 segundos

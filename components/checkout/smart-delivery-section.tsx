@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Plus, Check, ArrowLeft, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { logger } from '@/lib/logger'
 
 interface Address {
   id: string
@@ -50,7 +51,7 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
 
   // Selecionar um endereço - declarada antes dos useEffects
   const selectAddress = useCallback((address: Address) => {
-    console.log("[SmartDeliverySection] Selecionando endereço:", address)
+    logger.debug('MODULE', "[SmartDeliverySection] Selecionando endereço:", address)
     
     const formattedAddress = `${address.street}, ${address.number}${
       address.complement ? `, ${address.complement}` : ""
@@ -85,7 +86,7 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
       setError("")
 
       try {
-        console.log(`[SmartDeliverySection] Carregando endereços para userId: ${userId}`)
+        logger.debug('MODULE', `[SmartDeliverySection] Carregando endereços para userId: ${userId}`)
         const response = await fetch(`/api/addresses?userId=${userId}`)
 
         if (!response.ok) {
@@ -93,7 +94,7 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
         }
 
         const data = await response.json()
-        console.log("[SmartDeliverySection] Endereços carregados:", data)
+        logger.debug('MODULE', "[SmartDeliverySection] Endereços carregados:", data)
 
         if (data.addresses && Array.isArray(data.addresses)) {
           setAddresses(data.addresses)
@@ -101,7 +102,7 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
           // Se houver um endereço padrão, selecione-o automaticamente
           const defaultAddress = data.addresses.find((addr: Address) => addr.is_default) || data.addresses[0]
           if (defaultAddress && !selectedAddress?.zipCode) {
-            console.log("[SmartDeliverySection] Selecionando endereço padrão automaticamente:", defaultAddress)
+            logger.debug('MODULE', "[SmartDeliverySection] Selecionando endereço padrão automaticamente:", defaultAddress)
             selectAddress(defaultAddress)
           }
 
@@ -110,12 +111,12 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
             setView("form")
           }
         } else {
-          console.log("[SmartDeliverySection] Nenhum endereço encontrado ou formato inválido")
+          logger.debug('MODULE', "[SmartDeliverySection] Nenhum endereço encontrado ou formato inválido")
           setAddresses([])
           setView("form")
         }
       } catch (err) {
-        console.error("[SmartDeliverySection] Erro ao carregar endereços:", err)
+        logger.error('MODULE', "[SmartDeliverySection] Erro ao carregar endereços:", err)
         setError("Não foi possível carregar seus endereços. Tente novamente.")
         setView("form")
       } finally {
@@ -131,7 +132,7 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
     if (!loading && addresses.length > 0 && view === "default" && !selectedAddress?.zipCode) {
       const selectedAddr = addresses.find((a) => a.is_default) || addresses[0]
       if (selectedAddr) {
-        console.log("[SmartDeliverySection] Selecionando endereço padrão via useEffect:", selectedAddr)
+        logger.debug('MODULE', "[SmartDeliverySection] Selecionando endereço padrão via useEffect:", selectedAddr)
         selectAddress(selectedAddr)
       }
     }
@@ -197,7 +198,7 @@ export function SmartDeliverySection({ userId, onAddressSelect, selectedAddress 
       // Voltar para a visualização padrão
       setView("default")
     } catch (err) {
-      console.error("Erro ao salvar endereço:", err)
+      logger.error('MODULE', "Erro ao salvar endereço:", err)
       setError("Não foi possível salvar o endereço. Tente novamente.")
     } finally {
       setSavingAddress(false)

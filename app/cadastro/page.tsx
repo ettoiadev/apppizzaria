@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "@/components/layout/header"
 import { AddressInput } from "@/components/ui/address-input"
 import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -158,7 +159,7 @@ export default function RegisterPage() {
         full_name: formData.name.trim(),
       }
 
-      console.log("Registering user with payload:", { ...payload, password: "[HIDDEN]" })
+      logger.debug('MODULE', "Registering user with payload:", { ...payload, password: "[HIDDEN]" })
 
       // Use AuthContext register method for automatic login and redirect
       await register(payload)
@@ -170,7 +171,7 @@ export default function RegisterPage() {
         router.push("/cardapio")
       }, 1500)
     } catch (error: any) {
-      console.error("Registration error:", error)
+      logger.error('MODULE', "Registration error:", error)
       setError(error.message || "Erro ao criar conta. Tente novamente.")
     } finally {
       setIsLoading(false)

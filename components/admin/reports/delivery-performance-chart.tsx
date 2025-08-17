@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bike, Clock, Star, AlertCircle, RefreshCw } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface DeliveryPerformanceChartProps {
   dateRange: string
@@ -115,7 +116,7 @@ export function DeliveryPerformanceChart({ dateRange }: DeliveryPerformanceChart
       setDeliveryData(chartData)
 
     } catch (error) {
-      console.error("Erro ao carregar dados de performance:", error)
+      logger.error('MODULE', "Erro ao carregar dados de performance:", error)
       setError("Erro ao carregar dados de performance")
     } finally {
       setLoading(false)

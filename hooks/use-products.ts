@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react"
 import type { Product } from "@/types"
 import { debugLog } from "@/lib/debug-utils"
+import { logger } from '@/lib/logger'
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([])
@@ -12,7 +13,7 @@ export function useProducts() {
 
   const loadProducts = useCallback(async () => {
     try {
-      debugLog("Carregando produtos")
+      logger.debug('USE_PRODUCTS', "Carregando produtos")
       setLoading(true)
       setError(null)
 
@@ -29,10 +30,10 @@ export function useProducts() {
       }
 
       const data = await response.json()
-      debugLog(`${data.length} produtos carregados`)
+      logger.debug('USE_PRODUCTS', `${data.length} produtos carregados`)
       setProducts(data)
     } catch (err: any) {
-      debugLog("Erro ao carregar produtos", err)
+      logger.error('USE_PRODUCTS', "Erro ao carregar produtos", err)
       setError(err.message)
       setProducts([])
     } finally {
@@ -41,7 +42,7 @@ export function useProducts() {
   }, [])
 
   const refreshProducts = useCallback(async () => {
-    debugLog("Refresh manual solicitado")
+    logger.debug('USE_PRODUCTS', "Refresh manual solicitado")
     await loadProducts()
   }, [loadProducts])
 

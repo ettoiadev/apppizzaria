@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger'
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -33,7 +34,7 @@ export function useProducts() {
         .order('name');
 
       if (productsError) {
-        console.error('Erro ao carregar produtos:', productsError);
+        logger.error('MODULE', 'Erro ao carregar produtos:', productsError);
         return;
       }
 
@@ -45,14 +46,14 @@ export function useProducts() {
         .order('name');
 
       if (categoriesError) {
-        console.error('Erro ao carregar categorias:', categoriesError);
+        logger.error('MODULE', 'Erro ao carregar categorias:', categoriesError);
         return;
       }
 
       setProducts(productsData || []);
       setCategories(categoriesData || []);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      logger.error('MODULE', 'Erro ao carregar dados:', error);
     } finally {
       setIsLoadingProducts(false);
     }

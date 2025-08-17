@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, AlertCircle, RefreshCw } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface TopProductsChartProps {
   dateRange: string
@@ -98,7 +99,7 @@ export function TopProductsChart({ dateRange }: TopProductsChartProps) {
       setTopProducts(chartData)
 
     } catch (error) {
-      console.error("Erro ao carregar dados de produtos:", error)
+      logger.error('MODULE', "Erro ao carregar dados de produtos:", error)
       setError("Erro ao carregar dados de produtos")
     } finally {
       setLoading(false)

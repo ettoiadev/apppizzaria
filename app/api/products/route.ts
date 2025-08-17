@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,11 +22,11 @@ export async function GET() {
       .order('created_at', { ascending: true })
     
     if (error) {
-      console.error('Erro ao buscar produtos:', error)
+      logger.error('MODULE', 'Erro ao buscar produtos:', error)
       throw error
     }
     
-    console.log('Query executada, produtos encontrados:', products?.length || 0)
+    logger.debug('MODULE', 'Query executada, produtos encontrados:', products?.length || 0)
     
     // Se não houver produtos, verificar todos os produtos ativos
     if (!products || products.length === 0) {
@@ -34,11 +35,11 @@ export async function GET() {
         .select('*')
         .eq('active', true)
       
-      console.log('Produtos sem filtro available:', allProducts?.length || 0)
+      logger.debug('MODULE', 'Produtos sem filtro available:', allProducts?.length || 0)
       
       // Verificar quantos estão como available = false
       const unavailable = allProducts?.filter(p => !p.available) || []
-      console.log('Produtos indisponíveis:', unavailable.length)
+      logger.debug('MODULE', 'Produtos indisponíveis:', unavailable.length)
     }
 
     // Garantir que todos os produtos tenham propriedades essenciais
@@ -58,7 +59,7 @@ export async function GET() {
 
     return NextResponse.json(normalizedProducts)
   } catch (error) {
-    console.error('Erro ao buscar produtos:', error)
+    logger.error('MODULE', 'Erro ao buscar produtos:', error)
     return NextResponse.json(
       { error: 'Erro interno ao buscar produtos' },
       { status: 500 }
@@ -97,24 +98,24 @@ export async function POST(request: Request) {
       .eq('active', true)
     
     if (countError) {
-      console.error('Erro ao contar produtos ativos:', countError)
+      logger.error('MODULE', 'Erro ao contar produtos ativos:', countError)
     }
     
-    console.log(`Produtos ativos encontrados: ${activeCount || 0}`)
+    logger.debug('MODULE', `Produtos ativos encontrados: ${activeCount || 0}`)
     
     // Se não há produtos ativos, resetar a sequência de numeração
     if (!activeCount || activeCount === 0) {
-      console.log('Nenhum produto ativo encontrado. Resetando sequência de numeração para 1.')
+      logger.debug('MODULE', 'Nenhum produto ativo encontrado. Resetando sequência de numeração para 1.')
       try {
         // Usar função RPC do Supabase para resetar sequência
         const { error: resetError } = await supabase.rpc('reset_products_sequence')
         if (resetError) {
-          console.log('Erro ao resetar sequência:', resetError)
+          logger.debug('MODULE', 'Erro ao resetar sequência:', resetError)
         } else {
-          console.log('Sequência resetada com sucesso')
+          logger.debug('MODULE', 'Sequência resetada com sucesso')
         }
       } catch (seqError) {
-        console.log('Erro ao resetar sequência:', seqError)
+        logger.debug('MODULE', 'Erro ao resetar sequência:', seqError)
       }
     }
 
@@ -136,7 +137,7 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      console.error('Erro ao inserir produto:', insertError)
+      logger.error('MODULE', 'Erro ao inserir produto:', insertError)
       throw insertError
     }
 
@@ -151,11 +152,11 @@ export async function POST(request: Request) {
       toppings: product.toppings ? (typeof product.toppings === 'string' ? JSON.parse(product.toppings) : product.toppings) : []
     }
 
-    console.log(`Produto criado com sucesso: ${normalizedProduct.name} - Número: ${normalizedProduct.productNumber}`)
+    logger.debug('MODULE', `Produto criado com sucesso: ${normalizedProduct.name} - Número: ${normalizedProduct.productNumber}`)
     
     return NextResponse.json({ product: normalizedProduct })
   } catch (error) {
-    console.error('Erro ao criar produto:', error)
+    logger.error('MODULE', 'Erro ao criar produto:', error)
     return NextResponse.json(
       { error: 'Erro interno ao criar produto' },
       { status: 500 }

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 // GET - Buscar dados de um usuário específico
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    console.log("GET /api/users - Buscando usuário:", params.id)
+    logger.debug('MODULE', "GET /api/users - Buscando usuário:", params.id)
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +27,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .single()
 
     if (error || !profile) {
-      console.error('Erro ao buscar perfil:', error)
+      logger.error('MODULE', 'Erro ao buscar perfil:', error)
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
@@ -34,7 +35,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(params.id)
     
     if (authError || !authUser.user) {
-      console.error('Erro ao buscar dados de autenticação:', authError)
+      logger.error('MODULE', 'Erro ao buscar dados de autenticação:', authError)
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
@@ -48,7 +49,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       profile_completed: profile.profile_completed
     }
     
-    console.log("Dados do usuário encontrados:", userData)
+    logger.debug('MODULE', "Dados do usuário encontrados:", userData)
 
     return NextResponse.json({ 
       user: {
@@ -63,7 +64,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       }
     })
   } catch (error) {
-    console.error("Erro ao buscar usuário:", error)
+    logger.error('MODULE', "Erro ao buscar usuário:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -71,7 +72,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 // PUT - Atualizar dados de um usuário
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    console.log("PUT /api/users - Atualizando usuário:", params.id)
+    logger.debug('MODULE', "PUT /api/users - Atualizando usuário:", params.id)
 
     const body = await request.json()
     const { name, email, phone } = body
@@ -100,7 +101,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // Limpar telefone para salvar apenas números no banco
     const cleanPhone = phone.replace(/\D/g, "")
     
-    console.log("Dados a serem atualizados:", { name, email, phone: phone, cleanPhone })
+    logger.debug('MODULE', "Dados a serem atualizados:", { name, email, phone: phone, cleanPhone })
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -123,7 +124,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         )
         
         if (emailUpdateError) {
-          console.error('Erro ao atualizar email:', emailUpdateError)
+          logger.error('MODULE', 'Erro ao atualizar email:', emailUpdateError)
           throw emailUpdateError
         }
       }
@@ -139,11 +140,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         .eq('id', params.id)
 
       if (profileUpdateError) {
-        console.error('Erro ao atualizar perfil:', profileUpdateError)
+        logger.error('MODULE', 'Erro ao atualizar perfil:', profileUpdateError)
         throw profileUpdateError
       }
 
-      console.log("Usuário atualizado com sucesso:", params.id)
+      logger.debug('MODULE', "Usuário atualizado com sucesso:", params.id)
 
       return NextResponse.json({ 
         message: "Dados atualizados com sucesso",
@@ -155,11 +156,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
       })
     } catch (transactionError) {
-      console.error('Erro na atualização:', transactionError)
+      logger.error('MODULE', 'Erro na atualização:', transactionError)
       throw transactionError
     }
   } catch (error) {
-    console.error("Erro ao atualizar usuário:", error)
+    logger.error('MODULE', "Erro ao atualizar usuário:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

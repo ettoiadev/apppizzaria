@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 // GET - Listar endereços do usuário
 export async function GET(request: Request) {
@@ -25,13 +26,13 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Erro ao buscar endereços:', error)
+      logger.error('MODULE', 'Erro ao buscar endereços:', error)
       throw error
     }
 
     return NextResponse.json({ addresses: addresses || [] })
   } catch (error) {
-    console.error("Erro ao buscar endereços:", error)
+    logger.error('MODULE', "Erro ao buscar endereços:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { customer_id, name, street, number, complement, neighborhood, city, state, zip_code, is_default } = body
 
-    console.log("POST /api/addresses - Dados recebidos:", body)
+    logger.debug('MODULE', "POST /api/addresses - Dados recebidos:", body)
 
     // Validações detalhadas dos campos obrigatórios
     if (!customer_id) {
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
         .eq('user_id', customer_id)
         
       if (updateError) {
-        console.error('Erro ao atualizar endereços padrão:', updateError)
+        logger.error('MODULE', 'Erro ao atualizar endereços padrão:', updateError)
         throw updateError
       }
     }
@@ -114,15 +115,15 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      console.error('Erro ao criar endereço:', insertError)
+      logger.error('MODULE', 'Erro ao criar endereço:', insertError)
       throw insertError
     }
 
-    console.log("POST /api/addresses - Endereço criado:", newAddress)
+    logger.debug('MODULE', "POST /api/addresses - Endereço criado:", newAddress)
 
     return NextResponse.json({ address: newAddress })
   } catch (error) {
-    console.error("Erro ao criar endereço:", error)
+    logger.error('MODULE', "Erro ao criar endereço:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

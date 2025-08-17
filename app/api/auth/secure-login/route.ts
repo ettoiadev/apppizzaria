@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import jwt from "jsonwebtoken"
 import { SECURE_COOKIE_OPTIONS, REFRESH_TOKEN_OPTIONS, sanitizeInput } from "@/lib/auth-security"
 import { serialize } from "cookie"
+import { logger } from '@/lib/logger'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error("Erro no login seguro:", error)
+    logger.error('MODULE', "Erro no login seguro:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

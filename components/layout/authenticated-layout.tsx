@@ -7,6 +7,7 @@ import { AuthenticatedHeader } from "./authenticated-header"
 import { useRouter, usePathname } from "next/navigation"
 import { useEffect } from "react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { logger } from '@/lib/logger'
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode
@@ -21,7 +22,7 @@ export function AuthenticatedLayout({ children, onCartClick }: AuthenticatedLayo
   useEffect(() => {
     // Redirect non-authenticated users to login with redirect parameter
     if (!user && !isLoading) {
-      console.log("AuthenticatedLayout: User not authenticated, redirecting to login")
+      logger.debug('MODULE', "AuthenticatedLayout: User not authenticated, redirecting to login")
       router.push("/login?redirect=" + encodeURIComponent(pathname))
     }
   }, [user, isLoading, router, pathname])

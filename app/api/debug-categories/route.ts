@@ -1,94 +1,90 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const startTime = Date.now()
+  logger.api('GET', '/api/debug-categories')
+  
   try {
-    console.log('🔍 DEBUG: Iniciando diagnóstico de categorias...')
+    const supabase = createClient()
     
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // 1. Verificar estrutura da tabela (usando Supabase)
-    console.log('1. Verificando estrutura da tabela categories...')
-    // Nota: Supabase não expõe information_schema diretamente, mas podemos verificar os dados
-    console.log('Estrutura da tabela: Usando Supabase - verificação via dados')
-    
-    // 2. Verificar dados atuais
-    console.log('2. Verificando todas as categorias...')
-    const { data: allCategories, error: allCategoriesError } = await supabase
+    // Verificar se a tabela categories existe
+    logger.database('SELECT', 'categories', { operation: 'table_check' })
+    const { data: tableInfo, error: tableError } = await supabase
       .from('categories')
       .select('*')
+      .limit(1)
     
-    if (allCategoriesError) {
-      console.error('Erro ao buscar categorias:', allCategoriesError)
-      throw allCategoriesError
+    if (tableError) {
+      logger.databaseError('SELECT', 'categories', tableError)
+      return NextResponse.json({ 
+        error: 'Erro ao acessar tabela categories', 
+        details: tableError 
+      }, { status: 500 })
     }
     
-    console.log('Total de categorias no banco:', allCategories?.length || 0)
+    logger.info('DEBUG_CATEGORIES', 'Tabela categories acessível')
     
-    allCategories?.forEach(cat => {
-      console.log(`- ${cat.name}: active=${cat.active}, id=${cat.id}`)
-    })
-    
-    // 3. Testar categoria específica (Sobremesas)
-    const sobremesasId = 'edd3f631-c717-4c54-8490-e9cc72fcd1f2'
-    console.log('3. Verificando categoria Sobremesas...')
-    const { data: sobremesas, error: sobremesasError } = await supabase
+    // Buscar todas as categorias
+    logger.database('SELECT', 'categories', { operation: 'fetch_all' })
+    const { data: categories, error: categoriesError } = await supabase
       .from('categories')
       .select('*')
-      .eq('id', sobremesasId)
-      .single()
+      .order('name')
     
-    console.log('Categoria Sobremesas:', sobremesas || 'NÃO ENCONTRADA')
-    if (sobremesasError) console.log('Erro ao buscar Sobremesas:', sobremesasError)
+    if (categoriesError) {
+      logger.databaseError('SELECT', 'categories', categoriesError)
+      return NextResponse.json({ 
+        error: 'Erro ao buscar categorias', 
+        details: categoriesError 
+      }, { status: 500 })
+    }
     
-    // 4. Tentar update para false
-    console.log('4. Testando UPDATE active = false...')
-    const { data: updateResult, error: updateError } = await supabase
-      .from('categories')
-      .update({ active: false })
-      .eq('id', sobremesasId)
-      .select()
-      .single()
+    logger.info('DEBUG_CATEGORIES', `Total de categorias encontradas: ${categories?.length || 0}`)
     
-    console.log('Resultado do UPDATE:', updateResult || 'NENHUMA LINHA AFETADA')
-    if (updateError) console.log('Erro no UPDATE:', updateError)
+    // Verificar produtos por categoria
+    logger.database('SELECT', 'products', { operation: 'fetch_by_category' })
+    const categoriesWithProducts = await Promise.all(
+      (categories || []).map(async (category) => {
+        const { data: products, error: productsError } = await supabase
+          .from('products')
+          .select('id, name')
+          .eq('category_id', category.id)
+        
+        if (productsError) {
+          logger.databaseError('SELECT', 'products', {
+            ...productsError,
+            category: category.name
+          })
+        }
+        
+        return {
+          ...category,
+          products_count: products?.length || 0,
+          products: products || []
+        }
+      })
+    )
     
-    // 5. Verificar após update
-    console.log('5. Verificando após UPDATE...')
-    const { data: afterUpdate, error: afterUpdateError } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('id', sobremesasId)
-      .single()
-    
-    console.log('Categoria após UPDATE:', afterUpdate || 'NÃO ENCONTRADA')
-    if (afterUpdateError) console.log('Erro ao verificar após UPDATE:', afterUpdateError)
-    
-    // 6. Testar query com filtro active
-    console.log('6. Testando query com filtro active = true...')
-    const { data: activeOnly, error: activeOnlyError } = await supabase
-      .from('categories')
-      .select('id, name, active')
-      .eq('active', true)
-    
-    console.log('Categorias ativas:', activeOnly?.length || 0)
-    if (activeOnlyError) console.log('Erro ao buscar categorias ativas:', activeOnlyError)
+    const duration = Date.now() - startTime
+    logger.performance('debug-categories', duration)
+    logger.info('DEBUG_CATEGORIES', 'Verificação concluída com sucesso')
     
     return NextResponse.json({
-      message: 'Debug concluído - verificar logs do servidor',
-      structure: 'Usando Supabase - estrutura verificada via dados',
-      totalCategories: allCategories?.length || 0,
-      sobremesasFound: !!sobremesas,
-      updateResult: updateResult || null,
-      afterUpdate: afterUpdate || null,
-      activeCategories: activeOnly?.length || 0
+      success: true,
+      total_categories: categories?.length || 0,
+      categories: categoriesWithProducts,
+      timestamp: new Date().toISOString()
     })
     
   } catch (error) {
-    console.error('❌ Erro no debug:', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro desconhecido' }, { status: 500 })
+    const duration = Date.now() - startTime
+    logger.performance('debug-categories', duration)
+    logger.apiError('GET', '/api/debug-categories', error)
+    return NextResponse.json({ 
+      error: 'Erro inesperado', 
+      details: error instanceof Error ? error.message : 'Erro desconhecido' 
+    }, { status: 500 })
   }
 }

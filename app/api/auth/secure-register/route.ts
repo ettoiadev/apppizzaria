@@ -8,6 +8,7 @@ import {
   type ValidationRule 
 } from "@/lib/api-middleware"
 import { 
+import { logger } from '@/lib/logger'
   validatePasswordStrength, 
   isCommonPassword, 
   sanitizeInput 
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("POST /api/auth/secure-register - Registering user:", {
+    logger.debug('MODULE', "POST /api/auth/secure-register - Registering user:", {
       email: email.substring(0, 3) + "***", // Log parcial por segurança
       name: name.substring(0, 3) + "***",
       role
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (authError) {
-      console.error("Erro ao criar usuário no Auth:", authError)
+      logger.error('MODULE', "Erro ao criar usuário no Auth:", authError)
       
       // Tratar erros específicos
       if (authError.message.includes('already registered')) {
@@ -138,13 +139,13 @@ export async function POST(request: NextRequest) {
       })
 
     if (profileError) {
-      console.error("Erro ao criar perfil:", profileError)
+      logger.error('MODULE', "Erro ao criar perfil:", profileError)
       
       // Tentar reverter a criação do usuário
       try {
         await supabase.auth.admin.deleteUser(authData.user.id)
       } catch (deleteError) {
-        console.error("Erro ao reverter criação de usuário:", deleteError)
+        logger.error('MODULE', "Erro ao reverter criação de usuário:", deleteError)
       }
       
       return NextResponse.json(
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
-    console.error("Erro no POST /api/auth/secure-register:", error)
+    logger.error('MODULE', "Erro no POST /api/auth/secure-register:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

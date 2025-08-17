@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, MapPin, Package, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from '@/lib/logger'
 
 interface AssignOrderModalProps {
   deliveryPersonId: string
@@ -46,7 +47,7 @@ export function AssignOrderModal({ deliveryPersonId, isOpen, onClose, onAssign }
   } = useQuery<Order[]>({
     queryKey: ["preparing-orders"],
     queryFn: async () => {
-      console.log("Buscando pedidos em preparo...")
+      logger.debug('MODULE', "Buscando pedidos em preparo...")
       
       const response = await fetch('/api/orders?status=PREPARING')
       
@@ -55,7 +56,7 @@ export function AssignOrderModal({ deliveryPersonId, isOpen, onClose, onAssign }
       }
       
       const data = await response.json()
-      console.log("Pedidos em preparo encontrados:", data.orders?.length || 0)
+      logger.debug('MODULE', "Pedidos em preparo encontrados:", data.orders?.length || 0)
       
       return data.orders || []
     },
@@ -66,7 +67,7 @@ export function AssignOrderModal({ deliveryPersonId, isOpen, onClose, onAssign }
   // Mutation para atribuir entregador ao pedido
   const assignDriverMutation = useMutation({
     mutationFn: async (orderId: string) => {
-      console.log("Atribuindo entregador:", { orderId, deliveryPersonId })
+      logger.debug('MODULE', "Atribuindo entregador:", { orderId, deliveryPersonId })
       
       const response = await fetch(`/api/orders/${orderId}/assign-driver`, {
         method: 'PATCH',

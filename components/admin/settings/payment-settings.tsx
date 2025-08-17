@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Save, CreditCard, Banknote, QrCode, Smartphone } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface PaymentSettingsProps {
   settings: Record<string, any>
@@ -81,7 +82,7 @@ export function PaymentSettings({ settings: initialSettings, onSave, onMarkUnsav
 
     setIsLoading(true)
     try {
-      console.log("Saving payment settings:", settings)
+      logger.debug('MODULE', "Saving payment settings:", settings)
       const success = await onSave(settings)
       
       if (success) {
@@ -89,7 +90,7 @@ export function PaymentSettings({ settings: initialSettings, onSave, onMarkUnsav
         setOriginalSettings({ ...settings })
       }
     } catch (error) {
-      console.error("Error saving payment settings:", error)
+      logger.error('MODULE', "Error saving payment settings:", error)
     } finally {
       setIsLoading(false)
     }

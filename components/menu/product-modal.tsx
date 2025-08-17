@@ -15,6 +15,7 @@ import { useCart } from "@/contexts/cart-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { formatCurrency } from "@/lib/utils"
+import { logger } from '@/lib/logger'
 
 interface ProductModalProps {
   product: Product
@@ -71,7 +72,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
         setAvailablePizzas(pizzas)
       }
     } catch (error) {
-      console.error('Erro ao carregar pizzas:', error)
+      logger.error('MODULE', 'Erro ao carregar pizzas:', error)
     }
   }
 

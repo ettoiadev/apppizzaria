@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function PATCH(
   request: NextRequest,
@@ -9,7 +10,7 @@ export async function PATCH(
     const orderId = params.id
     const { driverId } = await request.json()
 
-    console.log("PATCH /api/orders/[id]/assign-driver - Atribuindo entregador:", { orderId, driverId })
+    logger.debug('MODULE', "PATCH /api/orders/[id]/assign-driver - Atribuindo entregador:", { orderId, driverId })
 
     // Validação básica
     if (!driverId) {
@@ -110,7 +111,7 @@ export async function PATCH(
         throw new Error(`Erro ao atualizar motorista: ${updateDriverError.message}`)
       }
 
-      console.log("Entregador atribuído com sucesso:", {
+      logger.debug('MODULE', "Entregador atribuído com sucesso:", {
         order: updatedOrder,
         driver: updatedDriver
       })
@@ -122,12 +123,12 @@ export async function PATCH(
       })
 
     } catch (error) {
-      console.error("Erro na operação:", error)
+      logger.error('MODULE', "Erro na operação:", error)
       throw error
     }
 
   } catch (error: any) {
-    console.error("Erro ao atribuir entregador:", error)
+    logger.error('MODULE', "Erro ao atribuir entregador:", error)
     
     // Tratamento específico de erros Supabase
     if (error.code) {
@@ -153,7 +154,7 @@ export async function PATCH(
             { status: 500 }
           )
         default:
-          console.error("Erro Supabase não tratado:", error.code, error.message)
+          logger.error('MODULE', "Erro Supabase não tratado:", error.code, error.message)
       }
     }
 
@@ -171,7 +172,7 @@ export async function DELETE(
   try {
     const orderId = params.id
 
-    console.log("DELETE /api/orders/[id]/assign-driver - Removendo entregador:", orderId)
+    logger.debug('MODULE', "DELETE /api/orders/[id]/assign-driver - Removendo entregador:", orderId)
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -231,7 +232,7 @@ export async function DELETE(
         .in('status', ['ON_THE_WAY'])
 
       if (countError) {
-        console.error('Erro ao contar pedidos ativos:', countError)
+        logger.error('MODULE', 'Erro ao contar pedidos ativos:', countError)
       }
 
       // 3. Se não tem outros pedidos, voltar entregador para available
@@ -246,11 +247,11 @@ export async function DELETE(
           .eq('id', order.driver_id)
 
         if (updateDriverError) {
-          console.error('Erro ao atualizar status do motorista:', updateDriverError)
+          logger.error('MODULE', 'Erro ao atualizar status do motorista:', updateDriverError)
         }
       }
 
-      console.log("Entregador removido com sucesso:", updatedOrder)
+      logger.debug('MODULE', "Entregador removido com sucesso:", updatedOrder)
 
       return NextResponse.json({
         message: "Entregador removido com sucesso",
@@ -258,12 +259,12 @@ export async function DELETE(
       })
 
     } catch (error) {
-      console.error("Erro na operação:", error)
+      logger.error('MODULE', "Erro na operação:", error)
       throw error
     }
 
   } catch (error: any) {
-    console.error("Erro ao remover entregador:", error)
+    logger.error('MODULE', "Erro ao remover entregador:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor", details: error.message },
       { status: 500 }

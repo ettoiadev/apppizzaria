@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { comparePasswords, generateToken, getUserByEmail } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       token
     })
   } catch (error) {
-    console.error("Login error:", error)
+    logger.error('MODULE', "Login error:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

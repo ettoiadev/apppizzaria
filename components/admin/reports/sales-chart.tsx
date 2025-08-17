@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, AlertCircle, RefreshCw } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface SalesChartProps {
   dateRange: string
@@ -95,7 +96,7 @@ export function SalesChart({ dateRange }: SalesChartProps) {
       setSalesData(chartData)
 
     } catch (error) {
-      console.error("Erro ao carregar dados de vendas:", error)
+      logger.error('MODULE', "Erro ao carregar dados de vendas:", error)
       setError("Erro ao carregar dados de vendas")
     } finally {
       setLoading(false)

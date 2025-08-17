@@ -11,6 +11,7 @@ import { CustomerDetailsModal } from "./customer-details-modal"
 import { CustomerOrderHistory } from "./customer-order-history"
 import { Search, Eye, Phone, Mail, MapPin, Calendar, ShoppingBag, RefreshCw } from "lucide-react"
 import type { Customer } from "@/types/admin"
+import { logger } from '@/lib/logger'
 
 export function CustomersManagement() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -22,7 +23,7 @@ export function CustomersManagement() {
   const { data: customersData, isLoading, error, refetch } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
-      console.log("Buscando clientes da API...")
+      logger.debug('MODULE', "Buscando clientes da API...")
       
       const response = await fetch('/api/customers')
       
@@ -31,7 +32,7 @@ export function CustomersManagement() {
       }
       
       const data = await response.json()
-      console.log("Clientes carregados:", data.customers?.length || 0)
+      logger.debug('MODULE', "Clientes carregados:", data.customers?.length || 0)
       
       return data
     },

@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { Package, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface OrderItem {
   id: string
@@ -45,7 +46,7 @@ export default function OrdersPage() {
         throw new Error("Usuário não autenticado")
       }
 
-      console.log("Buscando pedidos para o usuário:", user.id)
+      logger.debug('MODULE', "Buscando pedidos para o usuário:", user.id)
       
       const response = await fetch(`/api/orders?userId=${user.id}&limit=50`)
       
@@ -54,7 +55,7 @@ export default function OrdersPage() {
       }
       
       const data = await response.json()
-      console.log("Pedidos carregados:", data)
+      logger.debug('MODULE', "Pedidos carregados:", data)
       
       return data.orders || []
     },
@@ -66,14 +67,14 @@ export default function OrdersPage() {
 
   // Handle errors with useEffect or within components
   if (error) {
-    console.error("Erro ao carregar pedidos:", error)
+    logger.error('MODULE', "Erro ao carregar pedidos:", error)
   }
 
   const orders = ordersData || []
 
   const handleRefresh = () => {
     refetch().catch((err) => {
-      console.error("Erro ao atualizar pedidos:", err)
+      logger.error('MODULE', "Erro ao atualizar pedidos:", err)
       toast({
         title: "Erro",
         description: "Não foi possível atualizar seus pedidos. Tente novamente.",
@@ -149,7 +150,7 @@ export default function OrdersPage() {
   }
 
   const handleViewDetails = (orderId: string) => {
-    console.log("Navegando para detalhes do pedido:", orderId)
+    logger.debug('MODULE', "Navegando para detalhes do pedido:", orderId)
     router.push(`/pedido/${orderId}`)
   }
 

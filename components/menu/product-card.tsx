@@ -6,6 +6,7 @@ import { Plus } from "lucide-react"
 import type { Product } from "@/types"
 import { useState } from "react"
 import { formatCurrency } from "@/lib/utils"
+import { logger } from '@/lib/logger'
 
 interface ProductCardProps {
   product: Product
@@ -17,7 +18,7 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
   const [imageLoading, setImageLoading] = useState(true)
 
   const handleImageError = () => {
-    console.log("Image failed to load:", product.image)
+    logger.debug('MODULE', "Image failed to load:", product.image)
     setImageError(true)
     setImageLoading(false)
   }

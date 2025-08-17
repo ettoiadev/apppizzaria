@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { User, Phone, MapPin, Package, Edit3, UserPlus, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from '@/lib/logger'
 
 interface Customer {
   id: string
@@ -92,11 +93,11 @@ export function CustomerAutocomplete({ onCustomerSelect, orderType, disabled = f
         setCustomers(data.customers || [])
         setShowResults(true)
       } else {
-        console.error('Erro na busca de clientes')
+        logger.error('MODULE', 'Erro na busca de clientes')
         setCustomers([])
       }
     } catch (error) {
-      console.error('Erro ao buscar clientes:', error)
+      logger.error('MODULE', 'Erro ao buscar clientes:', error)
       setCustomers([])
     } finally {
       setIsSearching(false)

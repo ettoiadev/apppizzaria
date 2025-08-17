@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 // GET - Buscar um produto específico
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -37,7 +38,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     return NextResponse.json({ product: normalizedProduct })
   } catch (error) {
-    console.error("Erro ao buscar produto:", error)
+    logger.error('MODULE', "Erro ao buscar produto:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -98,7 +99,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     return NextResponse.json({ product: normalizedProduct })
   } catch (error) {
-    console.error("Erro ao atualizar produto:", error)
+    logger.error('MODULE', "Erro ao atualizar produto:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -107,8 +108,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
-    console.log('PATCH body received:', body)
-    console.log('Product ID:', params.id)
+    logger.debug('MODULE', 'PATCH body received:', body)
+    logger.debug('MODULE', 'Product ID:', params.id)
     
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -147,7 +148,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: "Nenhum campo válido para atualização" }, { status: 400 })
     }
 
-    console.log('Update data:', updateData)
+    logger.debug('MODULE', 'Update data:', updateData)
 
     const { data: product, error } = await supabase
       .from('products')
@@ -170,10 +171,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       toppings: product.toppings ? (typeof product.toppings === 'string' ? JSON.parse(product.toppings) : product.toppings) : []
     }
 
-    console.log('Product updated successfully:', normalizedProduct)
+    logger.debug('MODULE', 'Product updated successfully:', normalizedProduct)
     return NextResponse.json({ product: normalizedProduct })
   } catch (error) {
-    console.error("Erro ao atualizar produto:", error)
+    logger.error('MODULE', "Erro ao atualizar produto:", error)
     return NextResponse.json({ 
       error: "Erro interno do servidor",
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -215,7 +216,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     return NextResponse.json({ message: "Produto excluído com sucesso" })
   } catch (error) {
-    console.error("Erro ao excluir produto:", error)
+    logger.error('MODULE', "Erro ao excluir produto:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

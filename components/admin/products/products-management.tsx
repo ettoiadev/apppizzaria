@@ -255,7 +255,7 @@ export function ProductsManagement() {
       const url = editingCategory ? `/api/categories/${editingCategory.id}` : "/api/categories"
       const method = editingCategory ? "PUT" : "POST"
 
-      console.log('Enviando requisição:', { url, method, data: categoryData })
+      logger.debug('PRODUCTS_MANAGEMENT', 'Enviando requisição', { url, method, data: categoryData })
 
       const response = await fetch(url, {
         method,
@@ -263,11 +263,11 @@ export function ProductsManagement() {
         body: JSON.stringify(categoryData),
       })
 
-      console.log('Resposta recebida:', response.status, response.statusText)
+      logger.debug('PRODUCTS_MANAGEMENT', 'Resposta recebida', { status: response.status, statusText: response.statusText })
 
       if (response.ok) {
         const savedCategory = await response.json()
-        console.log('Dados salvos:', savedCategory)
+        logger.debug('PRODUCTS_MANAGEMENT', 'Dados salvos', savedCategory)
         
         // Normalizar resposta (pode vir como objeto direto ou dentro de um wrapper)
         const categoryData = savedCategory.category || savedCategory
@@ -294,7 +294,7 @@ export function ProductsManagement() {
         setCategoryModalOpen(false)
       } else {
         const errorData = await response.json()
-        console.error('Erro da API:', errorData)
+        logger.error('PRODUCTS_MANAGEMENT', 'Erro da API', errorData)
         throw new Error(errorData.error || "Falha ao salvar categoria")
       }
     } catch (error) {
@@ -329,23 +329,23 @@ export function ProductsManagement() {
   const handleConfirmDelete = async () => {
     if (!deletingItem) return
 
-    console.log('🗑️ Iniciando exclusão:', deletingItem)
+    logger.debug('PRODUCTS_MANAGEMENT', 'Iniciando exclusão', deletingItem)
 
     try {
       const endpoint = deletingItem.type === "product" ? "products" : "categories"
       const idToDelete = deletingItem.id
 
-      console.log(`📡 Fazendo DELETE para /api/${endpoint}/${idToDelete}`)
+      logger.debug('PRODUCTS_MANAGEMENT', 'Fazendo DELETE', { endpoint, id: idToDelete })
 
       const response = await fetch(`/api/${endpoint}/${idToDelete}`, {
         method: "DELETE",
       })
 
-      console.log('📡 Resposta da API:', response.status, response.statusText)
+      logger.debug('PRODUCTS_MANAGEMENT', 'Resposta da API', { status: response.status, statusText: response.statusText })
 
       if (response.ok) {
         const responseData = await response.json()
-        console.log('📡 Dados da resposta:', responseData)
+        logger.debug('PRODUCTS_MANAGEMENT', 'Dados da resposta', responseData)
 
         if (deletingItem.type === "product") {
           setProducts((prevProducts) => prevProducts.filter((p) => p.id !== idToDelete))
@@ -358,12 +358,12 @@ export function ProductsManagement() {
           // Para categorias: atualizar estado local imediatamente
           setCategories((prevCategories) => {
             const updatedCategories = prevCategories.filter((c) => c.id !== idToDelete)
-            console.log('📊 Categorias após remoção local:', updatedCategories.length)
+            logger.debug('PRODUCTS_MANAGEMENT', 'Categorias após remoção local', { count: updatedCategories.length })
             return updatedCategories
           })
           
           if (selectedCategory === idToDelete) {
-            console.log('🎯 Resetando filtro de categoria selecionada')
+            logger.debug('PRODUCTS_MANAGEMENT', 'Resetando filtro de categoria selecionada')
             setSelectedCategory("all")
           }
           
@@ -380,11 +380,11 @@ export function ProductsManagement() {
         }
       } else {
         const errorData = await response.json()
-        console.error('❌ Erro na API:', errorData)
+        logger.error('PRODUCTS_MANAGEMENT', 'Erro na API', errorData)
         throw new Error(errorData.error || "Erro ao excluir item")
       }
     } catch (error) {
-      console.error("❌ Error deleting item:", error)
+      logger.error('PRODUCTS_MANAGEMENT', 'Error deleting item', error)
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao excluir item",
@@ -597,4 +597,4 @@ export function ProductsManagement() {
       />
     </div>
   )
-} 
+}

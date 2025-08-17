@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { verifyAdmin } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -33,13 +34,13 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (profileError || !profile) {
-      console.error('Error fetching admin profile:', profileError)
+      logger.error('MODULE', 'Error fetching admin profile:', profileError)
       return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })
     }
 
     return NextResponse.json({ profile })
   } catch (error) {
-    console.error("Error fetching admin profile:", error)
+    logger.error('MODULE', "Error fetching admin profile:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -79,7 +80,7 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (updateError || !updatedProfile) {
-      console.error('Error updating admin profile:', updateError)
+      logger.error('MODULE', 'Error updating admin profile:', updateError)
       return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })
     }
 
@@ -88,7 +89,7 @@ export async function PUT(request: NextRequest) {
       profile: updatedProfile 
     })
   } catch (error) {
-    console.error("Error updating admin profile:", error)
+    logger.error('MODULE', "Error updating admin profile:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

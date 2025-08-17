@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -18,13 +19,13 @@ export async function executeQuery(query: string, params?: any[]) {
     });
     
     if (error) {
-      console.error('Supabase query error:', error);
+      logger.error('MODULE', 'Supabase query error:', error);
       throw error;
     }
     
     return { rows: data, rowCount: data?.length || 0 };
   } catch (error) {
-    console.error('Error executing query:', error);
+    logger.error('MODULE', 'Error executing query:', error);
     throw error;
   }
 }
@@ -37,13 +38,13 @@ export async function getSettings() {
       .select('setting_key, setting_value, setting_type');
     
     if (error) {
-      console.error('Error fetching settings:', error);
+      logger.error('MODULE', 'Error fetching settings:', error);
       throw error;
     }
     
     return data || [];
   } catch (error) {
-    console.error('Error in getSettings:', error);
+    logger.error('MODULE', 'Error in getSettings:', error);
     throw error;
   }
 }

@@ -1,40 +1,13 @@
-// Debug utilities for conditional logging in production
-const isProduction = process.env.NODE_ENV === 'production'
+// Utilitários de debug para desenvolvimento
+import { logger } from './logger'
 
-export const debugLog = (...args: any[]) => {
-  if (!isProduction) {
-    console.log('[DEBUG]', ...args)
-  }
+// Log condicional baseado no ambiente (mantido para compatibilidade)
+export const debugLog = (message: string, data?: any) => {
+  logger.debug('DEBUG', message, data)
 }
 
-export const logger = {
-  log: (...args: any[]) => {
-    if (!isProduction) {
-      console.log(...args)
-    }
-  },
-  
-  error: (...args: any[]) => {
-    // Always log errors, but in production only show generic messages
-    if (isProduction) {
-      console.error('An error occurred:', args[0]?.message || 'Unknown error')
-    } else {
-      console.error(...args)
-    }
-  },
-  
-  warn: (...args: any[]) => {
-    if (!isProduction) {
-      console.warn(...args)
-    }
-  },
-  
-  info: (...args: any[]) => {
-    if (!isProduction) {
-      console.info(...args)
-    }
-  }
-}
+// Logger mais robusto (mantido para compatibilidade)
+export { logger } from './logger'
 
 // Safe localStorage access with error handling
 export const safeStorage = {

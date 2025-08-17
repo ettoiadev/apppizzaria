@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation"
 import { Minus, Plus, Trash2, Edit, Pizza } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
 import type { CartItem, Product } from "@/types"
+import { logger } from '@/lib/logger'
 
 interface OrderSummaryProps {
   items: CartItem[]
@@ -34,7 +35,7 @@ export function OrderSummary({ items, total }: OrderSummaryProps) {
   // Função para buscar dados do produto e abrir modal de edição
   const handleEditItem = async (item: CartItem, index: number) => {
     try {
-      console.log('Item do carrinho para edição:', item)
+      logger.debug('ORDER_SUMMARY', 'Item do carrinho para edição:', item)
       
       // Buscar dados completos do produto da API
       // Para pizza meio a meio, usar o productId da primeira metade
@@ -43,27 +44,27 @@ export function OrderSummary({ items, total }: OrderSummaryProps) {
       
       if (item.isHalfAndHalf && item.halfAndHalf?.firstHalf?.productId) {
         productId = item.halfAndHalf.firstHalf.productId
-        console.log('Pizza meio a meio detectada, usando productId da primeira metade:', productId)
+        logger.debug('ORDER_SUMMARY', 'Pizza meio a meio detectada, usando productId da primeira metade:', productId)
       } else {
         productId = item.id
-        console.log('Produto normal detectado, usando item.id:', productId)
+        logger.debug('ORDER_SUMMARY', 'Produto normal detectado, usando item.id:', productId)
       }
       
       // Validar se temos um productId válido
       if (!productId || productId.trim() === '') {
-        console.error('ProductId inválido:', productId)
-        console.error('Item completo:', JSON.stringify(item, null, 2))
+        logger.error('ORDER_SUMMARY', 'ProductId inválido:', productId)
+        logger.error('ORDER_SUMMARY', 'Item completo:', JSON.stringify(item, null, 2))
         throw new Error('ID do produto não encontrado no item do carrinho')
       }
       
       // Limpar productId de caracteres extras se necessário
       const cleanProductId = productId.toString().replace(/--+$/, '').trim()
-      console.log('ProductId limpo para requisição:', cleanProductId)
+      logger.debug('ORDER_SUMMARY', 'ProductId limpo para requisição:', cleanProductId)
       
       const response = await fetch(`/api/products/${cleanProductId}`)
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Erro na API:', response.status, errorText)
+        logger.error('ORDER_SUMMARY', 'Erro na API:', response.status, errorText)
         throw new Error(`Produto não encontrado: ${response.status} - ${errorText}`)
       }
 
@@ -74,8 +75,8 @@ export function OrderSummary({ items, total }: OrderSummaryProps) {
       
       // Validar se os dados do produto são válidos
       if (!product || !product.id || !product.name) {
-        console.error('Resposta da API:', productData)
-        console.error('Produto extraído:', product)
+        logger.error('ORDER_SUMMARY', 'Resposta da API:', productData)
+        logger.error('ORDER_SUMMARY', 'Produto extraído:', product)
         throw new Error('Dados do produto inválidos recebidos da API')
       }
       
@@ -93,14 +94,14 @@ export function OrderSummary({ items, total }: OrderSummaryProps) {
         price: product.price || 0
       }
       
-      console.log('Produto normalizado para edição:', normalizedProduct)
+      logger.debug('ORDER_SUMMARY', 'Produto normalizado para edição:', normalizedProduct)
       
       setEditingItem({ item, index })
       setEditingProduct(normalizedProduct)
       setIsEditModalOpen(true)
     } catch (error) {
-      console.error('Erro ao carregar produto para edição:', error)
-      console.error('Item que causou o erro:', JSON.stringify(item, null, 2))
+      logger.error('ORDER_SUMMARY', 'Erro ao carregar produto para edição:', error)
+      logger.error('ORDER_SUMMARY', 'Item que causou o erro:', JSON.stringify(item, null, 2))
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
       alert(`Erro ao carregar dados do produto para edição: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
     }
@@ -351,7 +352,7 @@ function EditProductModal({
         setAvailablePizzas(pizzas)
       }
     } catch (error: unknown) {
-      console.error('Erro ao carregar pizzas:', error)
+      logger.error('MODULE', 'Erro ao carregar pizzas:', error)
     }
   }
 

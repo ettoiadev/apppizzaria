@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { User, Mail, Phone, MapPin, Edit, Save, X, CheckCircle, AlertCircle, Shield } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 export default function AccountPage() {
   const { user } = useAuth()
@@ -97,7 +98,7 @@ export default function AccountPage() {
         throw new Error(result.error || "Erro ao atualizar dados")
       }
 
-      console.log("Dados atualizados com sucesso:", result)
+      logger.debug('MODULE', "Dados atualizados com sucesso:", result)
 
       // Atualizar formData com telefone formatado
       setFormData(prev => ({

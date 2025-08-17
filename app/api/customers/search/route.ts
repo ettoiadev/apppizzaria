@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ customers: [] })
     }
 
-    console.log(`[CUSTOMER_SEARCH] Buscando clientes com termo: "${searchTerm}"`)
+    logger.debug('MODULE', `[CUSTOMER_SEARCH] Buscando clientes com termo: "${searchTerm}"`)
 
     // Normalizar termo de busca (remover acentos e converter para minúsculas)
     const normalizeString = (str: string) => {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const normalizedSearchTerm = normalizeString(searchTerm)
     const phoneOnlyNumbers = searchTerm.replace(/\D/g, '')
 
-    console.log(`[CUSTOMER_SEARCH] Termo normalizado: "${normalizedSearchTerm}", Telefone: "${phoneOnlyNumbers}"`)
+    logger.debug('MODULE', `[CUSTOMER_SEARCH] Termo normalizado: "${normalizedSearchTerm}", Telefone: "${phoneOnlyNumbers}"`)
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`[CUSTOMER_SEARCH] Clientes brutos encontrados: ${rawCustomers.length}`)
+    logger.debug('MODULE', `[CUSTOMER_SEARCH] Clientes brutos encontrados: ${rawCustomers.length}`)
 
          // Filtragem adicional no JavaScript para garantir correspondência precisa
      const filteredCustomers = rawCustomers.filter(customer => {
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
        
        const matches = nameMatches || phoneMatches
        
-       console.log(`[CUSTOMER_SEARCH] Cliente "${customer.name}":`, {
+       logger.debug('MODULE', `[CUSTOMER_SEARCH] Cliente "${customer.name}":`, {
          customerNameNormalized,
          customerPhoneClean,
          searchTerm: normalizedSearchTerm,
@@ -123,12 +124,12 @@ export async function GET(request: NextRequest) {
        return matches
      })
 
-    console.log(`[CUSTOMER_SEARCH] Clientes filtrados: ${filteredCustomers.length}`)
+    logger.debug('MODULE', `[CUSTOMER_SEARCH] Clientes filtrados: ${filteredCustomers.length}`)
 
     return NextResponse.json({ customers: filteredCustomers })
 
   } catch (error: any) {
-    console.error("[CUSTOMER_SEARCH] Erro na busca:", error)
+    logger.error('MODULE', "[CUSTOMER_SEARCH] Erro na busca:", error)
     return NextResponse.json({ 
       error: "Erro interno do servidor",
       customers: [] 
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, phone, email, address } = body
 
-    console.log("[CUSTOMER_SEARCH] Criando novo cliente:", { name, phone, email })
+    logger.debug('MODULE', "[CUSTOMER_SEARCH] Criando novo cliente:", { name, phone, email })
 
     // Validações
     if (!name?.trim()) {
@@ -268,7 +269,7 @@ export async function POST(request: NextRequest) {
 
       // Cliente criado com sucesso
 
-      console.log("[CUSTOMER_SEARCH] Cliente criado com sucesso:", newCustomer.id)
+      logger.debug('MODULE', "[CUSTOMER_SEARCH] Cliente criado com sucesso:", newCustomer.id)
 
       return NextResponse.json({
         customer: {
@@ -298,7 +299,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error("[CUSTOMER_SEARCH] Erro ao criar cliente:", error)
+    logger.error('MODULE', "[CUSTOMER_SEARCH] Erro ao criar cliente:", error)
     return NextResponse.json({ 
       error: error.message || "Erro interno do servidor" 
     }, { status: 500 })

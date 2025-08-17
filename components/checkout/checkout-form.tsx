@@ -13,6 +13,7 @@ import { AddressInput } from "@/components/ui/address-input"
 import { SmartDeliverySection } from "@/components/checkout/smart-delivery-section"
 import { useAuth } from "@/contexts/auth-context"
 import { CreditCard, Banknote, QrCode, Upload } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface CheckoutFormProps {
   onSubmit: (data: any) => void
@@ -47,14 +48,14 @@ export function CheckoutForm({ onSubmit, isLoading, userId }: CheckoutFormProps)
 
       setLoadingUserData(true)
       try {
-        console.log("Carregando dados do usuário para checkout:", user.id)
+        logger.debug('MODULE', "Carregando dados do usuário para checkout:", user.id)
         
         // Carregar dados do perfil do usuário
         const response = await fetch(`/api/users/${user.id}`)
         
         if (response.ok) {
           const userData = await response.json()
-          console.log("Dados do usuário carregados:", userData)
+          logger.debug('MODULE', "Dados do usuário carregados:", userData)
           
           setFormData(prev => ({
             ...prev,
@@ -62,7 +63,7 @@ export function CheckoutForm({ onSubmit, isLoading, userId }: CheckoutFormProps)
             phone: userData.user?.phone || user.phone || "",
           }))
         } else {
-          console.log("Usando dados básicos do contexto de auth")
+          logger.debug('MODULE', "Usando dados básicos do contexto de auth")
           // Usar dados básicos do contexto se a API falhar
           setFormData(prev => ({
             ...prev,
@@ -70,7 +71,7 @@ export function CheckoutForm({ onSubmit, isLoading, userId }: CheckoutFormProps)
           }))
         }
       } catch (error) {
-        console.error("Erro ao carregar dados do usuário:", error)
+        logger.error('MODULE', "Erro ao carregar dados do usuário:", error)
         // Usar dados básicos do contexto em caso de erro
         setFormData(prev => ({
           ...prev,
@@ -116,7 +117,7 @@ export function CheckoutForm({ onSubmit, isLoading, userId }: CheckoutFormProps)
       delivery_phone: formData.phone || user?.phone || ""
     }
     
-    console.log("Submitting order data:", orderData)
+    logger.debug('MODULE', "Submitting order data:", orderData)
     onSubmit(orderData)
   }
 

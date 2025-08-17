@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSettings } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 // API pública para buscar configurações que podem ser exibidas na página inicial
 export async function GET() {
@@ -89,7 +90,7 @@ export async function GET() {
       success: true 
     })
   } catch (error) {
-    console.error('Erro ao buscar configurações públicas:', error)
+    logger.error('MODULE', 'Erro ao buscar configurações públicas:', error)
     return NextResponse.json(
       { 
         error: 'Erro interno ao buscar configurações',

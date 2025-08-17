@@ -1,6 +1,7 @@
 import { sign, verify } from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { logger } from '@/lib/logger'
 
 // Cliente Supabase para operações diretas
 const supabase = createClient(
@@ -82,7 +83,7 @@ export function verifyToken(token: string) {
 
 export async function getUserByEmail(email: string) {
   try {
-    console.log('🔍 Buscando usuário via Supabase:', email);
+    logger.auth('🔍 Buscando usuário via Supabase:', email);
     
     const { data, error } = await supabase
       .from('profiles')
@@ -91,14 +92,14 @@ export async function getUserByEmail(email: string) {
       .single();
     
     if (error) {
-      console.log('⚠️ Usuário não encontrado:', error.message);
+      logger.auth('⚠️ Usuário não encontrado:', error.message);
       return null;
     }
     
-    console.log('✅ Usuário encontrado via Supabase');
+    logger.auth('✅ Usuário encontrado via Supabase');
     return data;
   } catch (error) {
-    console.error('❌ Error in getUserByEmail:', error);
+    logger.auth('❌ Error in getUserByEmail:', error);
     return null;
   }
 }

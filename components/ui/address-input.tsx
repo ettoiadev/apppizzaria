@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { MapPin, Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { logger } from '@/lib/logger'
 
 interface AddressData {
   zipCode: string
@@ -96,7 +97,7 @@ export function AddressInput({ value, onChange, required = false }: AddressInput
       })
     } catch (error) {
       setError("Erro ao buscar CEP. Tente novamente.")
-      console.error("Error fetching ZIP code:", error)
+      logger.error('MODULE', "Error fetching ZIP code:", error)
     } finally {
       setIsLoading(false)
     }

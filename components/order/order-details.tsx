@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MapPin, Phone, CreditCard } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface OrderDetailsProps {
   order: any
@@ -21,8 +22,8 @@ export function OrderDetails({ order }: OrderDetailsProps) {
   // Extrair itens do pedido - pode vir como 'items' ou 'order_items'
   const orderItems = order.items || order.order_items || []
   
-  console.log("OrderDetails - order:", order)
-  console.log("OrderDetails - orderItems:", orderItems)
+  logger.debug('MODULE', "OrderDetails - order:", order)
+  logger.debug('MODULE', "OrderDetails - orderItems:", orderItems)
 
   return (
     <div className="space-y-6">

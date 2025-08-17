@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[CUSTOMERS] Buscando clientes no Supabase")
+    logger.info('CUSTOMER_API', 'Buscando clientes no Supabase')
     
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,11 +19,11 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
     
     if (customersError) {
-      console.error('[CUSTOMERS] Erro ao buscar clientes:', customersError)
+      logger.error('CUSTOMER_API', 'Erro ao buscar clientes', customersError)
       throw customersError
     }
     
-    console.log(`[CUSTOMERS] Encontrados ${customers?.length || 0} clientes`)
+    logger.info('CUSTOMER_API', `Encontrados ${customers?.length || 0} clientes`)
 
     // Para cada cliente, buscar endereços e estatísticas de pedidos
     const customersWithDetails = await Promise.all(
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
             .order('created_at', { ascending: false })
             .limit(1)
             
-          console.log(`[CUSTOMERS] Cliente ${customer.id} - Endereços encontrados: ${addresses?.length || 0}`)
+          logger.debug('CUSTOMER_API', `Cliente ${customer.id} - Endereços encontrados: ${addresses?.length || 0}`)
           
           // Buscar estatísticas de pedidos
           const { data: ordersStats } = await supabase
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
             status = 'active'
           }
           
-          console.log(`[CUSTOMERS] Cliente ${customer.name} - Dias desde última atividade: ${daysSinceLastActivity}, Status: ${status}`)
+          logger.debug('CUSTOMER_API', `Cliente ${customer.full_name} - Dias desde última atividade: ${daysSinceLastActivity}, Status: ${status}`)
           
           // Construir endereço completo
           let fullAddress = 'Endereço não cadastrado'
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
             fullAddress = parts.join(' - ')
           }
           
-          console.log(`[CUSTOMERS] Cliente ${customer.name} - Telefone: ${customer.phone}, Endereço: ${fullAddress}`)
+          logger.debug('CUSTOMER_API', `Cliente ${customer.full_name} - Telefone: ${customer.phone}, Endereço: ${fullAddress}`)
 
           return {
             id: customer.id,
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
             favoriteItems: [] // Será implementado posteriormente se necessário
           }
         } catch (error) {
-          console.warn(`[CUSTOMERS] Erro ao buscar detalhes do cliente ${customer.id}:`, error)
+          logger.warn('CUSTOMER_API', `Erro ao buscar detalhes do cliente ${customer.id}`, error)
           return {
             id: customer.id,
             name: customer.full_name || 'Nome não informado',
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    console.log(`[CUSTOMERS] Retornando ${customersWithDetails.length} clientes com detalhes`)
+    logger.info('CUSTOMER_API', `Retornando ${customersWithDetails.length} clientes com detalhes`)
     
     return NextResponse.json({
       customers: customersWithDetails,
@@ -148,7 +149,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error("[CUSTOMERS] Erro ao buscar clientes:", error)
+    logger.error('CUSTOMER_API', 'Erro ao buscar clientes', error)
     
     return NextResponse.json({
       error: "Erro interno do servidor",

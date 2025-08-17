@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createUser } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error: any) {
-    console.error("Registration error:", error)
+    logger.error('MODULE', "Registration error:", error)
     
     // Handle specific database errors
     if (error.code === '23505') { // Unique constraint violation

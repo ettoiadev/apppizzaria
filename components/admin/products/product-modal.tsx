@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Upload, X, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { Product, Category, ProductSize, ProductTopping } from "@/types"
+import { logger } from '@/lib/logger'
 
 interface ProductModalProps {
   open: boolean
@@ -163,7 +164,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
       // Update form data with the processed image
       setFormData((prev) => ({ ...prev, image: previewUrl }))
     } catch (error) {
-      console.error("Error processing image:", error)
+      logger.error('MODULE', "Error processing image:", error)
       setErrors(["Erro ao processar a imagem. Tente novamente."])
     } finally {
       setIsProcessing(false)
@@ -238,7 +239,7 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
 
       // If a new file was uploaded, send it to the upload API first
       if (uploadedImage) {
-        console.log("Uploading new image file:", uploadedImage.name)
+        logger.debug('MODULE', "Uploading new image file:", uploadedImage.name)
 
         const uploadFormData = new FormData()
         uploadFormData.append("file", uploadedImage)
@@ -248,28 +249,28 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
           body: uploadFormData,
         })
 
-        console.log("Upload response status:", uploadResponse.status)
+        logger.debug('MODULE', "Upload response status:", uploadResponse.status)
 
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json()
-          console.error("Upload failed:", errorData)
+          logger.error('MODULE', "Upload failed:", errorData)
           throw new Error(errorData.message || "Failed to upload image")
         }
 
         const uploadResult = await uploadResponse.json()
-        console.log("Upload result:", uploadResult)
+        logger.debug('MODULE', "Upload result:", uploadResult)
 
         if (!uploadResult.url) {
           throw new Error("No URL returned from upload")
         }
 
         finalImageUrl = uploadResult.url // Use the permanent URL from upload service
-        console.log("Final image URL:", finalImageUrl)
+        logger.debug('MODULE', "Final image URL:", finalImageUrl)
       }
 
       // Clean up blob URLs from existing image URLs
       if (finalImageUrl && finalImageUrl.startsWith("blob:")) {
-        console.warn("Detected blob URL, clearing it:", finalImageUrl)
+        logger.warn('MODULE', "Detected blob URL, clearing it:", finalImageUrl)
         finalImageUrl = ""
       }
 
@@ -279,12 +280,12 @@ export function ProductModal({ open, onOpenChange, product, categories, onSave }
         image: finalImageUrl, // This will be either the new permanent URL or existing URL
       }
 
-      console.log("Submitting product payload:", productPayload)
+      logger.debug('MODULE', "Submitting product payload:", productPayload)
 
       // Call the onSave function with the corrected payload
       onSave(productPayload)
     } catch (error) {
-      console.error("Error submitting product:", error)
+      logger.error('MODULE', "Error submitting product:", error)
       setErrors([error instanceof Error ? error.message : "Failed to save product"])
     } finally {
       setIsProcessing(false)

@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Clock, Phone, MapPin, CreditCard, Package, Bike, CheckCircle, XCircle, Eye, RefreshCw, Bell, Dot, Printer, Store, Truck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ManualOrderForm } from "./manual-order-form"
+import { logger } from '@/lib/logger'
 
 
 const statusColors = {
@@ -140,7 +141,7 @@ export function OrdersManagement() {
         })
       }
     } catch (error) {
-      console.error("Error fetching orders:", error)
+      logger.error('MODULE', "Error fetching orders:", error)
       toast({
         title: "Erro",
         description: "Erro de conexão ao carregar pedidos",
@@ -189,7 +190,7 @@ export function OrdersManagement() {
         })
       }
     } catch (error) {
-      console.error("Error updating order status:", error)
+      logger.error('MODULE', "Error updating order status:", error)
       toast({
         title: "Erro",
         description: "Erro de conexão ao atualizar pedido",

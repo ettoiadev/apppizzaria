@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createUser } from "@/lib/auth"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
         allowRegistration = value === "true" || value === true
       }
     } catch (error) {
-      console.log("Admin settings table not found or accessible, allowing registration by default")
+      logger.debug('MODULE', "Admin settings table not found or accessible, allowing registration by default")
       allowRegistration = true
     }
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       role: "admin"
     })
 
-    console.log("Admin user created successfully:", user.id)
+    logger.debug('MODULE', "Admin user created successfully:", user.id)
 
     return NextResponse.json({
       message: "Administrador criado com sucesso",
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("Admin registration API error:", error)
+    logger.error('MODULE', "Admin registration API error:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

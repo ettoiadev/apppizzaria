@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowUp, ArrowDown, GripVertical, Save } from "lucide-react"
 import type { Category } from "@/types"
+import { logger } from '@/lib/logger'
 
 interface CategorySortModalProps {
   open: boolean
@@ -93,7 +94,7 @@ export function CategorySortModal({ open, onOpenChange, categories, onSave }: Ca
         throw new Error('Erro ao salvar ordem das categorias')
       }
     } catch (error) {
-      console.error('Erro ao salvar ordem das categorias:', error)
+      logger.error('MODULE', 'Erro ao salvar ordem das categorias:', error)
       alert('Erro ao salvar ordem das categorias. Tente novamente.')
     } finally {
       setSaving(false)

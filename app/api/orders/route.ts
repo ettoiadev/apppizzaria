@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
+import { logger } from '@/lib/logger'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const offset = Number.parseInt(searchParams.get("offset") || "0")
 
-    console.log("GET /api/orders - Fetching orders with params:", { status, userId, limit, offset })
+    logger.debug('MODULE', "GET /api/orders - Fetching orders with params:", { status, userId, limit, offset })
 
     // Construir query do Supabase
     let ordersQuery = supabase
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     const { data: orders, error: ordersError } = await ordersQuery
 
     if (ordersError) {
-      console.error('Erro ao buscar pedidos:', ordersError)
+      logger.error('MODULE', 'Erro ao buscar pedidos:', ordersError)
       throw ordersError
     }
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
     const { data: stats, error: statsError } = await statsQuery
 
     if (statsError) {
-      console.error('Erro ao buscar estatísticas:', statsError)
+      logger.error('MODULE', 'Erro ao buscar estatísticas:', statsError)
       throw statsError
     }
 
@@ -119,17 +120,17 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Unexpected error in GET /api/orders:", error)
+    logger.error('MODULE', "Unexpected error in GET /api/orders:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== POST /api/orders - INÍCIO ===")
+    logger.debug('MODULE', "=== POST /api/orders - INÍCIO ===")
     
     const body = await request.json()
-    console.log("POST /api/orders - Request body completo:", JSON.stringify(body, null, 2))
+    logger.debug('MODULE', "POST /api/orders - Request body completo:", JSON.stringify(body, null, 2))
 
     // Extrair e validar dados com logs detalhados
     const user_id = body.customerId || body.user_id
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
     const payment_method = body.paymentMethod || body.payment_method || "PIX"
     const delivery_instructions = body.notes || body.delivery_instructions || null
 
-    console.log("Dados extraídos:", {
+    logger.debug('MODULE', "Dados extraídos:", {
       user_id,
       items_count: items.length,
       total,
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     // Validações com mensagens específicas
     if (!user_id) {
-      console.error("ERRO: ID do usuário não fornecido")
+      logger.error('MODULE', "ERRO: ID do usuário não fornecido")
       return NextResponse.json({ 
         error: "ID do usuário é obrigatório",
         details: "user_id não foi fornecido no body da requisição" 
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      console.error("ERRO: Itens inválidos ou vazios")
+      logger.error('MODULE', "ERRO: Itens inválidos ou vazios")
       return NextResponse.json({ 
         error: "Itens do pedido são obrigatórios",
         details: "Array de itens está vazio ou inválido" 
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!delivery_address) {
-      console.error("ERRO: Endereço de entrega obrigatório", { delivery_address })
+      logger.error('MODULE', "ERRO: Endereço de entrega obrigatório", { delivery_address })
       return NextResponse.json({ 
         error: "Endereço de entrega é obrigatório",
         details: `Endereço: ${delivery_address || 'vazio'}` 
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (total <= 0) {
-      console.error("ERRO: Total inválido", { total })
+      logger.error('MODULE', "ERRO: Total inválido", { total })
       return NextResponse.json({ 
         error: "Total do pedido deve ser maior que zero",
         details: `Total recebido: ${total}` 
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
     try {
       // Atualizar perfil do usuário com nome e telefone se fornecidos e não existirem
       if (customer_name || delivery_phone) {
-        console.log("Atualizando perfil do usuário com dados do pedido...")
+        logger.debug('MODULE', "Atualizando perfil do usuário com dados do pedido...")
         
         const updateData: any = {}
         
@@ -228,16 +229,16 @@ export async function POST(request: NextRequest) {
               .eq('id', user_id)
               
             if (profileError) {
-              console.error('Erro ao atualizar perfil:', profileError)
+              logger.error('MODULE', 'Erro ao atualizar perfil:', profileError)
               // Não falhar o pedido por erro no perfil
             } else {
-              console.log("Perfil do usuário atualizado com sucesso")
+              logger.debug('MODULE', "Perfil do usuário atualizado com sucesso")
             }
           }
         }
       }
       // Criar pedido
-      console.log("Inserindo pedido no banco com dados:", {
+      logger.debug('MODULE', "Inserindo pedido no banco com dados:", {
         user_id,
         status: "RECEIVED",
         total,
@@ -270,14 +271,14 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (orderError || !order) {
-        console.error('Erro ao criar pedido:', orderError)
+        logger.error('MODULE', 'Erro ao criar pedido:', orderError)
         throw new Error("Falha ao criar pedido - " + (orderError?.message || "nenhum registro retornado"))
       }
 
-      console.log("Pedido criado com sucesso! ID:", order.id)
+      logger.debug('MODULE', "Pedido criado com sucesso! ID:", order.id)
 
       // Criar itens do pedido
-      console.log(`Inserindo ${items.length} itens do pedido...`)
+      logger.debug('MODULE', `Inserindo ${items.length} itens do pedido...`)
       
       const orderItems = []
       
@@ -293,7 +294,7 @@ export async function POST(request: NextRequest) {
           product_id = product_id.trim() // Remove espaços
         }
 
-        console.log(`Item ${i + 1}:`, {
+        logger.debug('MODULE', `Item ${i + 1}:`, {
           product_id_original: item.product_id || item.id,
           product_id_limpo: product_id,
           name: item.name,
@@ -308,14 +309,14 @@ export async function POST(request: NextRequest) {
         })
 
         if (!product_id) {
-          console.error(`ERRO: Item ${i + 1} sem product_id`)
+          logger.error('MODULE', `ERRO: Item ${i + 1} sem product_id`)
           throw new Error(`Item ${i + 1} não possui ID do produto`)
         }
 
         // Validar se é um UUID válido
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
         if (!uuidRegex.test(product_id)) {
-          console.error(`ERRO: Item ${i + 1} com product_id inválido:`, product_id)
+          logger.error('MODULE', `ERRO: Item ${i + 1} com product_id inválido:`, product_id)
           throw new Error(`Item ${i + 1} possui ID de produto inválido: ${product_id}`)
         }
 
@@ -339,18 +340,18 @@ export async function POST(request: NextRequest) {
         .insert(orderItems)
         
       if (itemsError) {
-        console.error('Erro ao inserir itens do pedido:', itemsError)
+        logger.error('MODULE', 'Erro ao inserir itens do pedido:', itemsError)
         throw new Error(`Falha ao inserir itens do pedido: ${itemsError.message}`)
       }
       
-      console.log(`${items.length} itens inseridos com sucesso`)
+      logger.debug('MODULE', `${items.length} itens inseridos com sucesso`)
 
-      console.log("Pedido e itens criados com sucesso!")
+      logger.debug('MODULE', "Pedido e itens criados com sucesso!")
 
       // Sistema de atualização manual via interface administrativa
 
       // Retornar o pedido criado
-      console.log("Pedido criado com sucesso! Retornando resposta...")
+      logger.debug('MODULE', "Pedido criado com sucesso! Retornando resposta...")
       
       return NextResponse.json({
         id: order.id,
@@ -361,19 +362,19 @@ export async function POST(request: NextRequest) {
       })
       
     } catch (innerError: any) {
-      console.error("ERRO durante criação do pedido:", innerError)
+      logger.error('MODULE', "ERRO durante criação do pedido:", innerError)
       throw innerError
     }
   } catch (error: any) {
-    console.error("=== ERRO COMPLETO NO POST /api/orders ===")
-    console.error("Tipo:", error.constructor.name)
-    console.error("Mensagem:", error.message)
-    console.error("Stack:", error.stack)
+    logger.error('MODULE', "=== ERRO COMPLETO NO POST /api/orders ===")
+    logger.error('MODULE', "Tipo:", error.constructor.name)
+    logger.error('MODULE', "Mensagem:", error.message)
+    logger.error('MODULE', "Stack:", error.stack)
     
     if (error.code) {
-      console.error("Código Supabase:", error.code)
-      console.error("Detalhe:", error.detail)
-      console.error("Hint:", error.hint)
+      logger.error('MODULE', "Código Supabase:", error.code)
+      logger.error('MODULE', "Detalhe:", error.detail)
+      logger.error('MODULE', "Hint:", error.hint)
     }
     
     // Retornar erro detalhado

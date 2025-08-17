@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { 
+import { logger } from '@/lib/logger'
   withMiddleware, 
   rateLimit, 
   validateInput, 
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
     const limit = Number(queryParams.limit) || 50
     const offset = Number(queryParams.offset) || 0
 
-    console.log("GET /api/orders/secure - Fetching orders with params:", { 
+    logger.debug('MODULE', "GET /api/orders/secure - Fetching orders with params:", { 
       status: queryParams.status, 
       userId: queryParams.userId, 
       limit, 
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     const { data: orders, error } = await ordersQuery
 
     if (error) {
-      console.error("Erro ao buscar pedidos:", error)
+      logger.error('MODULE', "Erro ao buscar pedidos:", error)
       return NextResponse.json(
         { error: "Erro ao buscar pedidos" },
         { status: 500 }
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ orders })
   } catch (error) {
-    console.error("Erro no GET /api/orders/secure:", error)
+    logger.error('MODULE', "Erro no GET /api/orders/secure:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("POST /api/orders/secure - Creating order:", {
+    logger.debug('MODULE', "POST /api/orders/secure - Creating order:", {
       customer: sanitizedBody.customer_name,
       items: sanitizedBody.items.length,
       total: sanitizedBody.total_amount
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (orderError) {
-      console.error("Erro ao criar pedido:", orderError)
+      logger.error('MODULE', "Erro ao criar pedido:", orderError)
       return NextResponse.json(
         { error: "Erro ao criar pedido" },
         { status: 500 }
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
       .insert(orderItems)
 
     if (itemsError) {
-      console.error("Erro ao criar itens do pedido:", itemsError)
+      logger.error('MODULE', "Erro ao criar itens do pedido:", itemsError)
       // Tentar reverter o pedido criado
       await supabase.from('orders').delete().eq('id', order.id)
       return NextResponse.json(
@@ -259,7 +260,7 @@ export async function POST(request: NextRequest) {
       }
     }, { status: 201 })
   } catch (error) {
-    console.error("Erro no POST /api/orders/secure:", error)
+    logger.error('MODULE', "Erro no POST /api/orders/secure:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

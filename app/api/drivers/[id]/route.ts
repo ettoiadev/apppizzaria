@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log(`[DRIVERS] Buscando entregador ID: ${params.id}`)
+    logger.debug('MODULE', `[DRIVERS] Buscando entregador ID: ${params.id}`)
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +26,7 @@ export async function GET(
       .single()
 
     if (error || !driver) {
-      console.error('Erro ao buscar entregador:', error)
+      logger.error('MODULE', 'Erro ao buscar entregador:', error)
       return NextResponse.json({
         error: "Entregador não encontrado",
         message: `Não existe entregador com ID ${params.id}`
@@ -46,7 +47,7 @@ export async function GET(
           currentOrders = orders.map((order: any) => order.id)
         }
       } catch (orderError) {
-        console.warn(`[DRIVERS] Erro ao buscar pedidos do entregador ${driver.id}:`, orderError)
+        logger.warn('MODULE', `[DRIVERS] Erro ao buscar pedidos do entregador ${driver.id}:`, orderError)
       }
     }
 
@@ -58,7 +59,7 @@ export async function GET(
     })
 
   } catch (error: any) {
-    console.error(`[DRIVERS] Erro ao buscar entregador ${params.id}:`, error)
+    logger.error('MODULE', `[DRIVERS] Erro ao buscar entregador ${params.id}:`, error)
     
     if (error.code === 'ECONNREFUSED') {
       return NextResponse.json({
@@ -79,7 +80,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log(`[DRIVERS] Atualizando entregador ID: ${params.id}`)
+    logger.debug('MODULE', `[DRIVERS] Atualizando entregador ID: ${params.id}`)
 
     const data = await request.json()
     const { name, email, phone, vehicleType, vehiclePlate, currentLocation, status } = data
@@ -158,7 +159,7 @@ export async function PATCH(
       .single()
 
     if (updateError) {
-      console.error('Erro ao atualizar entregador:', updateError)
+      logger.error('MODULE', 'Erro ao atualizar entregador:', updateError)
       throw updateError
     }
 
@@ -176,11 +177,11 @@ export async function PATCH(
           currentOrders = orders.map((order: any) => order.id)
         }
       } catch (orderError) {
-        console.warn(`[DRIVERS] Erro ao buscar pedidos:`, orderError)
+        logger.warn('MODULE', `[DRIVERS] Erro ao buscar pedidos:`, orderError)
       }
     }
 
-    console.log(`[DRIVERS] Entregador ${params.id} atualizado com sucesso`)
+    logger.debug('MODULE', `[DRIVERS] Entregador ${params.id} atualizado com sucesso`)
 
     return NextResponse.json({
       driver: {
@@ -191,7 +192,7 @@ export async function PATCH(
     })
 
   } catch (error: any) {
-    console.error(`[DRIVERS] Erro ao atualizar entregador ${params.id}:`, error)
+    logger.error('MODULE', `[DRIVERS] Erro ao atualizar entregador ${params.id}:`, error)
     
     // Verificar se é erro de email duplicado
     if (error.code === '23505' || (error.message && error.message.includes('duplicate key'))) {
@@ -213,7 +214,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log(`[DRIVERS] Iniciando exclusão do entregador ID: ${params.id}`)
+    logger.debug('MODULE', `[DRIVERS] Iniciando exclusão do entregador ID: ${params.id}`)
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -228,14 +229,14 @@ export async function DELETE(
       .single()
 
     if (driverError || !driver) {
-      console.error(`[DRIVERS] Entregador ${params.id} não encontrado`)
+      logger.error('MODULE', `[DRIVERS] Entregador ${params.id} não encontrado`)
       return NextResponse.json({
         error: "Entregador não encontrado",
         message: `Não existe entregador com ID ${params.id}`
       }, { status: 404 })
     }
 
-    console.log(`[DRIVERS] Verificando dependências para ${driver.name}`)
+    logger.debug('MODULE', `[DRIVERS] Verificando dependências para ${driver.name}`)
 
     // Verificar pedidos associados
     let activeOrdersCount = 0
@@ -265,15 +266,15 @@ export async function DELETE(
         hasOrderHistory = totalOrdersCount > 0
       }
 
-      console.log(`[DRIVERS] Entregador ${driver.name}: ${activeOrdersCount} pedidos ativos, ${totalOrdersCount} pedidos no histórico`)
+      logger.debug('MODULE', `[DRIVERS] Entregador ${driver.name}: ${activeOrdersCount} pedidos ativos, ${totalOrdersCount} pedidos no histórico`)
     } catch (ordersError) {
-      console.warn('[DRIVERS] Erro ao verificar pedidos:', ordersError)
+      logger.warn('MODULE', '[DRIVERS] Erro ao verificar pedidos:', ordersError)
       // Continuar mesmo com erro na verificação de pedidos
     }
 
     // REGRA 1: Impedir exclusão se há pedidos ativos
     if (activeOrdersCount > 0) {
-      console.log(`[DRIVERS] Bloqueando exclusão - ${activeOrdersCount} pedidos ativos`)
+      logger.debug('MODULE', `[DRIVERS] Bloqueando exclusão - ${activeOrdersCount} pedidos ativos`)
       return NextResponse.json({
         error: "Não é possível remover entregador",
         message: `O entregador ${driver.name} possui ${activeOrdersCount} pedido(s) em andamento. Aguarde a conclusão das entregas.`,
@@ -286,7 +287,7 @@ export async function DELETE(
 
     // REGRA 2: Usar soft-delete se há histórico de entregas
     if (hasOrderHistory || (driver.total_deliveries && driver.total_deliveries > 0)) {
-      console.log(`[DRIVERS] Aplicando soft-delete - entregador tem histórico de entregas`)
+      logger.debug('MODULE', `[DRIVERS] Aplicando soft-delete - entregador tem histórico de entregas`)
       
       // Tentar aplicar soft-delete usando coluna 'deleted_at'
       let hasSoftDeleteColumns = false;
@@ -301,15 +302,15 @@ export async function DELETE(
           
         if (!deletedAtUpdateError) {
           hasSoftDeleteColumns = true;
-          console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`);
+          logger.debug('MODULE', `[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`);
         }
       } catch (softDeleteError) {
-        console.warn('[DRIVERS] Erro na verificação de soft-delete:', softDeleteError);
+        logger.warn('MODULE', '[DRIVERS] Erro na verificação de soft-delete:', softDeleteError);
       }
 
       // Se não tem colunas de soft-delete, adicionar uma estratégia alternativa
       if (!hasSoftDeleteColumns) {
-        console.log(`[DRIVERS] Sem colunas de soft-delete disponíveis, mas preservando por segurança`);
+        logger.debug('MODULE', `[DRIVERS] Sem colunas de soft-delete disponíveis, mas preservando por segurança`);
         return NextResponse.json({
           error: "Não é possível remover entregador",
           message: `O entregador ${driver.name} possui histórico de ${totalOrdersCount} entrega(s) e não pode ser removido para preservar os dados históricos.`,
@@ -334,7 +335,7 @@ export async function DELETE(
     }
 
     // REGRA 3: Delete físico apenas se não há histórico
-    console.log(`[DRIVERS] Aplicando delete físico - sem histórico de entregas`);
+    logger.debug('MODULE', `[DRIVERS] Aplicando delete físico - sem histórico de entregas`);
     
     try {
       // Remove referências em outras tabelas se necessário
@@ -352,11 +353,11 @@ export async function DELETE(
         .eq('id', params.id)
 
       if (deleteError) {
-        console.error(`[DRIVERS] Erro durante delete físico:`, deleteError)
+        logger.error('MODULE', `[DRIVERS] Erro durante delete físico:`, deleteError)
         throw deleteError
       }
 
-      console.log(`[DRIVERS] Delete físico concluído para ${driver.name}`)
+      logger.debug('MODULE', `[DRIVERS] Delete físico concluído para ${driver.name}`)
 
       return NextResponse.json({
         message: `Entregador ${driver.name} removido com sucesso`,
@@ -367,12 +368,12 @@ export async function DELETE(
       })
 
     } catch (deleteError) {
-      console.error(`[DRIVERS] Erro durante delete físico:`, deleteError);
+      logger.error('MODULE', `[DRIVERS] Erro durante delete físico:`, deleteError);
       throw deleteError;
     }
 
   } catch (error: any) {
-    console.error(`[DRIVERS] Erro ao processar exclusão do entregador ${params.id}:`, error);
+    logger.error('MODULE', `[DRIVERS] Erro ao processar exclusão do entregador ${params.id}:`, error);
     
     // Tratamento específico de erros do Supabase
     if (error.code === '23503' || (error.message && error.message.includes('foreign key'))) {

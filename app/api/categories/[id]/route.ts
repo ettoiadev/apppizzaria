@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log('GET /api/categories/[id] - ID:', params.id)
+    logger.debug('MODULE', 'GET /api/categories/[id] - ID:', params.id)
     
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .single()
 
     if (error || !category) {
-      console.log('Categoria não encontrada:', params.id)
+      logger.debug('MODULE', 'Categoria não encontrada:', params.id)
       return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 })
     }
 
@@ -32,21 +33,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       active: category.active !== false
     }
 
-    console.log('Categoria encontrada:', normalizedCategory)
+    logger.debug('MODULE', 'Categoria encontrada:', normalizedCategory)
     return NextResponse.json({ category: normalizedCategory })
   } catch (error) {
-    console.error("Erro ao buscar categoria:", error)
+    logger.error('MODULE', "Erro ao buscar categoria:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log('PUT /api/categories/[id] - ID:', params.id)
+    logger.debug('MODULE', 'PUT /api/categories/[id] - ID:', params.id)
     
     // Validar se o ID foi fornecido
     if (!params.id || params.id.trim() === '') {
-      console.error('ID da categoria não fornecido')
+      logger.error('MODULE', 'ID da categoria não fornecido')
       return NextResponse.json(
         { error: "ID da categoria é obrigatório" },
         { status: 400 }
@@ -57,9 +58,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     let body
     try {
       body = await request.json()
-      console.log('Body recebido:', body)
+      logger.debug('MODULE', 'Body recebido:', body)
     } catch (parseError) {
-      console.error('Erro ao fazer parse do JSON:', parseError)
+      logger.error('MODULE', 'Erro ao fazer parse do JSON:', parseError)
       return NextResponse.json(
         { error: "Dados JSON inválidos" },
         { status: 400 }
@@ -70,7 +71,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Validação robusta dos dados
     if (!name || typeof name !== 'string' || !name.trim()) {
-      console.error('Nome da categoria inválido:', name)
+      logger.error('MODULE', 'Nome da categoria inválido:', name)
       return NextResponse.json(
         { error: "Nome da categoria é obrigatório e deve ser uma string válida" },
         { status: 400 }
@@ -90,7 +91,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .single()
 
     if (checkError || !existingCategory) {
-      console.error('Categoria não encontrada para update:', params.id)
+      logger.error('MODULE', 'Categoria não encontrada para update:', params.id)
       return NextResponse.json(
         { error: "Categoria não encontrada" },
         { status: 404 }
@@ -103,7 +104,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updateImage = (image && typeof image === 'string') ? image.trim() : ''
     const updateActive = active !== undefined ? Boolean(active) : true
 
-    console.log('Valores para update:', {
+    logger.debug('MODULE', 'Valores para update:', {
       name: updateName,
       description: updateDescription, 
       image: updateImage,
@@ -128,7 +129,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       .single()
 
     if (updateError || !result) {
-      console.error('Erro ao atualizar categoria:', updateError)
+      logger.error('MODULE', 'Erro ao atualizar categoria:', updateError)
       return NextResponse.json(
         { error: "Categoria não encontrada ou não foi possível atualizar" },
         { status: 404 }
@@ -145,11 +146,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       active: result.active !== false
     }
 
-    console.log('Categoria atualizada com sucesso:', normalizedCategory)
+    logger.debug('MODULE', 'Categoria atualizada com sucesso:', normalizedCategory)
     return NextResponse.json(normalizedCategory)
 
   } catch (error: any) {
-    console.error("Erro completo ao atualizar categoria:", {
+    logger.error('MODULE', "Erro completo ao atualizar categoria:", {
       message: error.message,
       stack: error.stack,
       id: params?.id
@@ -187,7 +188,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log('DELETE /api/categories/[id] - ID:', params.id)
+    logger.debug('MODULE', 'DELETE /api/categories/[id] - ID:', params.id)
     
     // Validar se o ID foi fornecido
     if (!params.id || params.id.trim() === '') {
@@ -210,11 +211,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       .single()
 
     if (checkError || !existingCategory) {
-      console.log('Categoria não encontrada para exclusão:', params.id)
+      logger.debug('MODULE', 'Categoria não encontrada para exclusão:', params.id)
       return NextResponse.json({ error: "Categoria não encontrada" }, { status: 404 })
     }
 
-    console.log('Categoria antes da exclusão:', existingCategory)
+    logger.debug('MODULE', 'Categoria antes da exclusão:', existingCategory)
 
     // Verificar se existem produtos usando esta categoria
     const { count: activeProductsCount, error: countError } = await supabase
@@ -224,11 +225,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       .eq('active', true)
 
     if (countError) {
-      console.error('Erro ao verificar produtos:', countError)
+      logger.error('MODULE', 'Erro ao verificar produtos:', countError)
       return NextResponse.json({ error: "Erro ao verificar produtos da categoria" }, { status: 500 })
     }
 
-    console.log(`Categoria ${params.id} possui ${activeProductsCount || 0} produtos ativos`)
+    logger.debug('MODULE', `Categoria ${params.id} possui ${activeProductsCount || 0} produtos ativos`)
 
     if ((activeProductsCount || 0) > 0) {
       return NextResponse.json(
@@ -246,11 +247,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       .single()
 
     if (updateError || !result) {
-      console.error('Falha ao atualizar categoria:', updateError)
+      logger.error('MODULE', 'Falha ao atualizar categoria:', updateError)
       return NextResponse.json({ error: "Falha ao excluir categoria" }, { status: 500 })
     }
 
-    console.log('Categoria marcada como inativa com sucesso:', result)
+    logger.debug('MODULE', 'Categoria marcada como inativa com sucesso:', result)
     
     return NextResponse.json({ 
       message: "Categoria excluída com sucesso",
@@ -259,7 +260,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     })
     
   } catch (error: any) {
-    console.error("Erro ao excluir categoria:", error)
+    logger.error('MODULE', "Erro ao excluir categoria:", error)
     return NextResponse.json({ 
       error: "Erro interno do servidor",
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 

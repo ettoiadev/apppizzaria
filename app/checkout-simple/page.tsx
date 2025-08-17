@@ -8,6 +8,7 @@ import { OrderSummary } from "@/components/checkout/order-summary"
 import { useCart } from "@/contexts/cart-context"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from '@/lib/logger'
 
 export default function SimpleCheckoutPage() {
   const router = useRouter()
@@ -60,7 +61,7 @@ export default function SimpleCheckoutPage() {
         delivery_instructions: orderData.notes || null,
       }
 
-      console.log("Enviando pedido:", payload)
+      logger.debug('MODULE', "Enviando pedido:", payload)
 
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -71,7 +72,7 @@ export default function SimpleCheckoutPage() {
       })
 
       const result = await response.json()
-      console.log("Resposta:", result)
+      logger.debug('MODULE', "Resposta:", result)
 
       if (!response.ok) {
         throw new Error(result.error || "Erro ao criar pedido")
@@ -90,7 +91,7 @@ export default function SimpleCheckoutPage() {
       }, 2000)
       
     } catch (error) {
-      console.error("Erro:", error)
+      logger.error('MODULE', "Erro:", error)
       toast({
         title: "Erro ao finalizar pedido",
         description: error instanceof Error ? error.message : "Tente novamente",

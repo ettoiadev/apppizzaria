@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { serialize } from "cookie"
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error("Erro no logout:", error)
+    logger.error('MODULE', "Erro no logout:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }

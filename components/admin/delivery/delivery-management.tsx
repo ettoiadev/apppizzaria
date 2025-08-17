@@ -12,6 +12,7 @@ import { DeliveryPersonModal } from "./delivery-person-modal"
 import { AssignOrderModal } from "./assign-order-modal"
 import { Search, Plus, Edit, Eye, Phone, Mail, MapPin, Clock, Package, Bike, RefreshCw, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { logger } from "@/lib/logger"
 
 interface Driver {
   id: string
@@ -83,7 +84,7 @@ export function DeliveryManagement() {
   } = useQuery<DriversData>({
     queryKey: ["drivers", statusFilter],
     queryFn: async () => {
-      console.log("Buscando entregadores da API...")
+      logger.info('DELIVERY_MANAGEMENT', 'Buscando entregadores da API', { statusFilter })
       
       const params = new URLSearchParams()
       if (statusFilter !== "all") {
@@ -97,7 +98,7 @@ export function DeliveryManagement() {
       }
       
       const data = await response.json()
-      console.log("Entregadores carregados:", data)
+      logger.info('DELIVERY_MANAGEMENT', 'Entregadores carregados com sucesso', { count: data.drivers?.length || 0 })
       
       return data
     },
@@ -179,13 +180,13 @@ export function DeliveryManagement() {
   // Mutation para deletar entregador
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: string) => {
-      console.log(`[DELETE_DRIVER] Iniciando exclusão do entregador ID: ${driverId}`)
+      logger.info('DELIVERY_MANAGEMENT', 'Iniciando exclusão do entregador', { driverId })
       
       const response = await fetch(`/api/drivers/${driverId}`, {
         method: 'DELETE',
       })
 
-      console.log(`[DELETE_DRIVER] Resposta da API:`, {
+      logger.info('DELIVERY_MANAGEMENT', 'Resposta da API de exclusão', {
         status: response.status,
         statusText: response.statusText,
         ok: response.ok
@@ -193,17 +194,17 @@ export function DeliveryManagement() {
 
       if (!response.ok) {
         const error = await response.json()
-        console.error(`[DELETE_DRIVER] Erro na API:`, error)
+        logger.error('DELIVERY_MANAGEMENT', 'Erro na API de exclusão', error)
         throw new Error(error.error || 'Erro ao excluir entregador')
       }
 
       const result = await response.json()
-      console.log(`[DELETE_DRIVER] Sucesso na API:`, result)
+      logger.info('DELIVERY_MANAGEMENT', 'Exclusão realizada com sucesso', result)
       return result
     },
     // Optimistic update - atualizar estado imediatamente
     onMutate: async (driverId) => {
-      console.log(`[DELETE_DRIVER] Aplicando atualização otimista para ID: ${driverId}`)
+      logger.info('DELIVERY_MANAGEMENT', 'Aplicando atualização otimista', { driverId })
       
       // Cancelar queries em andamento para evitar conflitos
       await queryClient.cancelQueries({ queryKey: ["drivers"] })
@@ -232,13 +233,13 @@ export function DeliveryManagement() {
         }
         
         queryClient.setQueryData(["drivers", statusFilter], updatedDrivers)
-        console.log(`[DELETE_DRIVER] Estado local atualizado otimisticamente`)
+        logger.info('DELIVERY_MANAGEMENT', 'Estado local atualizado otimisticamente')
       }
       
       return { previousDrivers }
     },
     onSuccess: (data, driverId) => {
-      console.log(`[DELETE_DRIVER] Exclusão confirmada pelo servidor:`, data)
+      logger.info('DELIVERY_MANAGEMENT', 'Exclusão confirmada pelo servidor', { driverId, data })
       
       // Invalidar todas as queries relacionadas a drivers
       queryClient.invalidateQueries({ queryKey: ["drivers"] })
@@ -262,14 +263,14 @@ export function DeliveryManagement() {
       })
       setShowDeleteModal(null)
       
-      console.log(`[DELETE_DRIVER] Processo de exclusão concluído com sucesso`)
+      logger.info('DELIVERY_MANAGEMENT', 'Processo de exclusão concluído com sucesso')
     },
     onError: (error: any, driverId, context) => {
-      console.error(`[DELETE_DRIVER] Erro durante exclusão:`, error)
+      logger.error('DELIVERY_MANAGEMENT', 'Erro durante exclusão', { error, driverId })
       
       // Reverter estado otimista em caso de erro
       if (context?.previousDrivers) {
-        console.log(`[DELETE_DRIVER] Revertendo estado otimista devido ao erro`)
+        logger.info('DELIVERY_MANAGEMENT', 'Revertendo estado otimista devido ao erro')
         queryClient.setQueryData(["drivers", statusFilter], context.previousDrivers)
       }
       
@@ -282,7 +283,7 @@ export function DeliveryManagement() {
     },
     onSettled: () => {
       // Sempre invalidar queries no final para garantir consistência
-      console.log(`[DELETE_DRIVER] Finalizando - invalidando todas as queries de drivers`)
+      logger.info('DELIVERY_MANAGEMENT', 'Finalizando exclusão - invalidando queries')
       queryClient.invalidateQueries({ queryKey: ["drivers"] })
     },
   })

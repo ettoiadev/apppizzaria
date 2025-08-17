@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CartItem, Customer, CustomerAddress, OrderType, PaymentMethod } from '../types';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger'
 
 interface OrderSubmissionData {
   cartItems: CartItem[];
@@ -41,13 +42,13 @@ export function useOrderSubmission() {
         .single();
 
       if (error) {
-        console.error('Erro ao criar cliente:', error);
+        logger.error('MODULE', 'Erro ao criar cliente:', error);
         return null;
       }
 
       return data.id;
     } catch (error) {
-      console.error('Erro ao criar cliente:', error);
+      logger.error('MODULE', 'Erro ao criar cliente:', error);
       return null;
     }
   };
@@ -83,13 +84,13 @@ export function useOrderSubmission() {
         .single();
 
       if (error) {
-        console.error('Erro ao criar pedido:', error);
+        logger.error('MODULE', 'Erro ao criar pedido:', error);
         return null;
       }
 
       return data.id;
     } catch (error) {
-      console.error('Erro ao criar pedido:', error);
+      logger.error('MODULE', 'Erro ao criar pedido:', error);
       return null;
     }
   };
@@ -110,13 +111,13 @@ export function useOrderSubmission() {
         .insert(orderItems);
 
       if (error) {
-        console.error('Erro ao criar itens do pedido:', error);
+        logger.error('MODULE', 'Erro ao criar itens do pedido:', error);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Erro ao criar itens do pedido:', error);
+      logger.error('MODULE', 'Erro ao criar itens do pedido:', error);
       return false;
     }
   };
@@ -201,7 +202,7 @@ export function useOrderSubmission() {
 
       return { success: true, orderId };
     } catch (error) {
-      console.error('Erro ao enviar pedido:', error);
+      logger.error('MODULE', 'Erro ao enviar pedido:', error);
       toast({
         title: 'Erro',
         description: 'Erro inesperado ao criar pedido',

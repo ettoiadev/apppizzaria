@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
 import { JwtPayload } from "jsonwebtoken"
+import { logger } from '@/lib/logger'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -26,7 +27,7 @@ export async function GET() {
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('[ABOUT] Erro ao buscar conteúdo:', error)
+      logger.error('MODULE', '[ABOUT] Erro ao buscar conteúdo:', error)
       return NextResponse.json({ error: "Erro ao buscar conteúdo" }, { status: 500 })
     }
 
@@ -176,7 +177,7 @@ export async function PUT(request: Request) {
         .single()
 
       if (updateError) {
-        console.error('[ABOUT] Erro ao atualizar:', updateError)
+        logger.error('MODULE', '[ABOUT] Erro ao atualizar:', updateError)
         throw updateError
       }
 
@@ -195,7 +196,7 @@ export async function PUT(request: Request) {
         .single()
 
       if (insertError) {
-        console.error('[ABOUT] Erro ao criar:', insertError)
+        logger.error('MODULE', '[ABOUT] Erro ao criar:', insertError)
         throw insertError
       }
 

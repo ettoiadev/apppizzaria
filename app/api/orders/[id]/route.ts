@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log("GET /api/orders/[id] - Buscando pedido:", params.id)
+    logger.debug('MODULE', "GET /api/orders/[id] - Buscando pedido:", params.id)
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +28,7 @@ export async function GET(
       .single()
 
     if (orderError || !order) {
-      console.log("Pedido não encontrado:", params.id)
+      logger.debug('MODULE', "Pedido não encontrado:", params.id)
       return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 })
     }
 
@@ -44,7 +45,7 @@ export async function GET(
       .order('created_at')
 
     if (itemsError) {
-      console.error("Erro ao buscar itens do pedido:", itemsError)
+      logger.error('MODULE', "Erro ao buscar itens do pedido:", itemsError)
       return NextResponse.json({ error: "Erro ao buscar itens do pedido" }, { status: 500 })
     }
 
@@ -62,7 +63,7 @@ export async function GET(
       name: item.products?.name || 'Produto'
     }))
 
-    console.log("Pedido encontrado:", order.id, "com", formattedItems.length, "itens")
+    logger.debug('MODULE', "Pedido encontrado:", order.id, "com", formattedItems.length, "itens")
 
     // Adicionar itens ao pedido
     const orderWithItems = {
@@ -86,7 +87,7 @@ export async function GET(
       paymentMethod: orderWithItems.payment_method
     }
 
-    console.log("Dados normalizados:", {
+    logger.debug('MODULE', "Dados normalizados:", {
       id: normalizedOrder.id,
       items_count: normalizedOrder.items.length,
       customer_name: normalizedOrder.customer.name
@@ -94,7 +95,7 @@ export async function GET(
 
     return NextResponse.json(normalizedOrder)
   } catch (error) {
-    console.error("Error fetching order:", error)
+    logger.error('MODULE', "Error fetching order:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -150,7 +151,7 @@ export async function PUT(
       order: updatedOrder 
     })
   } catch (error) {
-    console.error("Error updating order:", error)
+    logger.error('MODULE', "Error updating order:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -195,7 +196,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Pedido excluído com sucesso" })
   } catch (error) {
-    console.error("Error deleting order:", error)
+    logger.error('MODULE', "Error deleting order:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Calendar, DollarSign, Package, RefreshCw } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface CustomerOrderHistoryProps {
   customerId: string
@@ -52,7 +53,7 @@ export function CustomerOrderHistory({ customerId, isOpen, onClose }: CustomerOr
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ["customer-orders", customerId],
     queryFn: async () => {
-      console.log("Buscando pedidos do cliente:", customerId)
+      logger.debug('MODULE', "Buscando pedidos do cliente:", customerId)
       
       const response = await fetch(`/api/orders?userId=${customerId}`)
       
@@ -61,7 +62,7 @@ export function CustomerOrderHistory({ customerId, isOpen, onClose }: CustomerOr
       }
       
       const data = await response.json()
-      console.log("Pedidos do cliente carregados:", data.orders?.length || 0)
+      logger.debug('MODULE', "Pedidos do cliente carregados:", data.orders?.length || 0)
       
       return data.orders || []
     },

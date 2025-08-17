@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: Request) {
   try {
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
       })
 
     if (uploadError) {
-      console.error("Erro ao fazer upload para Supabase:", uploadError)
+      logger.error('MODULE', "Erro ao fazer upload para Supabase:", uploadError)
       return NextResponse.json({ 
         error: "Erro ao salvar arquivo", 
         details: uploadError.message 
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       .from('images')
       .getPublicUrl(filePath)
 
-    console.log("Arquivo salvo no Supabase:", publicUrl)
+    logger.debug('MODULE', "Arquivo salvo no Supabase:", publicUrl)
     
     return NextResponse.json({ 
       url: publicUrl,
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
       type: file.type
     })
   } catch (error) {
-    console.error("Erro no upload:", error)
+    logger.error('MODULE', "Erro no upload:", error)
     return NextResponse.json({ 
       error: "Erro interno do servidor",
       details: error instanceof Error ? error.message : 'Unknown error'

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,13 +19,13 @@ export async function GET() {
       .order('name', { ascending: true })
     
     if (error) {
-      console.error('Erro ao buscar categorias:', error)
+      logger.error('MODULE', 'Erro ao buscar categorias:', error)
       throw error
     }
     
-    console.log('🔍 Resultado da query - total de linhas:', categories?.length || 0)
+    logger.debug('MODULE', '🔍 Resultado da query - total de linhas:', categories?.length || 0)
     categories?.forEach(row => {
-      console.log(`🔍 Categoria: ${row.name}, active: ${row.active}`)
+      logger.debug('MODULE', `🔍 Categoria: ${row.name}, active: ${row.active}`)
     })
 
     // Normalizar os dados para garantir consistência
@@ -37,14 +38,14 @@ export async function GET() {
       active: category.active !== false
     }))
 
-    console.log('🔍 Categorias normalizadas - total:', normalizedCategories.length)
+    logger.debug('MODULE', '🔍 Categorias normalizadas - total:', normalizedCategories.length)
     normalizedCategories.forEach(cat => {
-      console.log(`🔍 Normalizada: ${cat.name}, active: ${cat.active}`)
+      logger.debug('MODULE', `🔍 Normalizada: ${cat.name}, active: ${cat.active}`)
     })
 
     return NextResponse.json({ categories: normalizedCategories })
   } catch (error) {
-    console.error('Erro ao buscar categorias:', error)
+    logger.error('MODULE', 'Erro ao buscar categorias:', error)
     return NextResponse.json(
       { error: 'Erro interno ao buscar categorias' },
       { status: 500 }
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Erro ao criar categoria:', error)
+      logger.error('MODULE', 'Erro ao criar categoria:', error)
       throw error
     }
     
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(normalizedCategory)
   } catch (error) {
-    console.error('Erro ao criar categoria:', error)
+    logger.error('MODULE', 'Erro ao criar categoria:', error)
     return NextResponse.json(
       { error: 'Erro interno ao criar categoria' },
       { status: 500 }
@@ -124,14 +125,14 @@ export async function PUT(request: Request) {
         .eq('id', id)
       
       if (error) {
-        console.error(`Erro ao atualizar categoria ${id}:`, error)
+        logger.error('MODULE', `Erro ao atualizar categoria ${id}:`, error)
         throw error
       }
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Erro ao atualizar ordem das categorias:', error)
+    logger.error('MODULE', 'Erro ao atualizar ordem das categorias:', error)
     return NextResponse.json(
       { error: 'Erro interno ao atualizar ordem das categorias' },
       { status: 500 }

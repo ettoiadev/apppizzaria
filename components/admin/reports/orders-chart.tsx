@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShoppingBag, AlertCircle, RefreshCw } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface OrdersChartProps {
   dateRange: string
@@ -95,7 +96,7 @@ export function OrdersChart({ dateRange }: OrdersChartProps) {
       setOrdersData(chartData)
 
     } catch (error) {
-      console.error("Erro ao carregar dados de pedidos:", error)
+      logger.error('MODULE', "Erro ao carregar dados de pedidos:", error)
       setError("Erro ao carregar dados de pedidos")
     } finally {
       setLoading(false)

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "@/components/layout/header"
 import { Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -71,7 +72,7 @@ export default function LoginPage() {
     setSuccess("")
 
     try {
-      console.log("Attempting login for:", email)
+      logger.debug('MODULE', "Attempting login for:", email)
       await login(email.trim().toLowerCase(), password)
 
       setSuccess("Login realizado com sucesso! Redirecionando...")
@@ -80,11 +81,11 @@ export default function LoginPage() {
       setTimeout(() => {
         const redirectUrl = searchParams.get("redirect")
         const targetUrl = redirectUrl ? decodeURIComponent(redirectUrl) : "/cardapio"
-        console.log("Redirecionando após login para:", targetUrl)
+        logger.debug('MODULE', "Redirecionando após login para:", targetUrl)
         router.push(targetUrl)
       }, 1000)
     } catch (error: any) {
-      console.error("Login error:", error)
+      logger.error('MODULE', "Login error:", error)
       setError(error.message || "Email ou senha inválidos")
     } finally {
       setIsLoading(false)

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 // POST - Enviar mensagem de contato
 export async function POST(request: Request) {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      console.error('[CONTACT] Erro ao inserir mensagem:', insertError)
+      logger.error('MODULE', '[CONTACT] Erro ao inserir mensagem:', insertError)
       throw insertError
     }
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
       contact: result
     })
   } catch (error) {
-    console.error("Erro ao enviar mensagem:", error)
+    logger.error('MODULE', "Erro ao enviar mensagem:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

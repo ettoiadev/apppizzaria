@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Download, FileText, FileSpreadsheet, Printer } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface ExportReportsProps {
   dateRange: string
@@ -20,7 +21,7 @@ export function ExportReports({ dateRange, reportType }: ExportReportsProps) {
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // In production, this would generate and download the actual file
-    console.log(`Exporting ${reportType} report for ${dateRange} in ${format} format`)
+    logger.debug('MODULE', `Exporting ${reportType} report for ${dateRange} in ${format} format`)
 
     setIsExporting(false)
   }

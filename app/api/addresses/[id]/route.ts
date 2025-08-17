@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     return NextResponse.json({ address })
   } catch (error) {
-    console.error("Erro ao buscar endereço:", error)
+    logger.error('MODULE', "Erro ao buscar endereço:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -37,7 +37,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const body = await request.json()
     const { is_default } = body
 
-    console.log("PATCH /api/addresses - Atualizando endereço:", params.id, body)
+    logger.debug('MODULE', "PATCH /api/addresses - Atualizando endereço:", params.id, body)
 
     // Primeiro, buscar o endereço para ter o user_id
     const { data: existingAddress, error: findError } = await supabase
@@ -76,11 +76,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       throw new Error('Erro ao atualizar endereço')
     }
 
-    console.log("PATCH /api/addresses - Endereço atualizado:", updatedAddress)
+    logger.debug('MODULE', "PATCH /api/addresses - Endereço atualizado:", updatedAddress)
 
     return NextResponse.json({ address: updatedAddress })
   } catch (error) {
-    console.error("Erro ao atualizar endereço:", error)
+    logger.error('MODULE', "Erro ao atualizar endereço:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
@@ -91,7 +91,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const body = await request.json()
     const { name, street, number, complement, neighborhood, city, state, zip_code, is_default } = body
 
-    console.log("PUT /api/addresses - Dados recebidos:", body)
+    logger.debug('MODULE', "PUT /api/addresses - Dados recebidos:", body)
 
     // Validações detalhadas dos campos obrigatórios
     if (!name || !name.trim()) {
@@ -173,24 +173,29 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       throw new Error('Erro ao atualizar endereço')
     }
 
-    console.log("PUT /api/addresses - Endereço atualizado:", updatedAddress)
+    logger.debug('MODULE', "PUT /api/addresses - Endereço atualizado:", updatedAddress)
 
     return NextResponse.json({ address: updatedAddress })
   } catch (error) {
-    console.error("Erro ao atualizar endereço:", error)
+    logger.error('MODULE', "Erro ao atualizar endereço:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }
 
+import { logger } from '@/lib/logger'
+
 // DELETE - Excluir um endereço
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const startTime = Date.now()
+  logger.api('DELETE', `/api/addresses/${params.id}`)
+  
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    console.log("DELETE /api/addresses - Excluindo endereço:", params.id)
+    logger.database('SELECT', 'customer_addresses', { addressId: params.id })
 
     // Verificar se o endereço existe
     const { data: existingAddress, error: checkError } = await supabase
@@ -200,6 +205,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       .single()
 
     if (checkError || !existingAddress) {
+      logger.databaseError('SELECT', 'customer_addresses', {
+        addressId: params.id,
+        error: checkError
+      })
       return NextResponse.json({ error: "Endereço não encontrado" }, { status: 404 })
     }
 
@@ -207,12 +216,18 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Não permitir excluir o endereço padrão se houver outros endereços
     if (is_default) {
+      logger.database('COUNT', 'customer_addresses', { userId: user_id })
       const { count, error: countError } = await supabase
         .from('customer_addresses')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user_id)
       
       if (!countError && count && count > 1) {
+        logger.info('ADDRESS_API', 'Tentativa de excluir endereço padrão com outros endereços existentes', {
+          addressId: params.id,
+          userId: user_id,
+          totalAddresses: count
+        })
         return NextResponse.json(
           { error: "Não é possível excluir o endereço padrão. Defina outro endereço como padrão primeiro." },
           { status: 400 }
@@ -221,20 +236,29 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Excluir endereço
+    logger.database('DELETE', 'customer_addresses', { addressId: params.id })
     const { error: deleteError } = await supabase
       .from('customer_addresses')
       .delete()
       .eq('id', params.id)
 
     if (deleteError) {
+      logger.databaseError('DELETE', 'customer_addresses', {
+        addressId: params.id,
+        ...deleteError
+      })
       throw deleteError
     }
 
-    console.log("DELETE /api/addresses - Endereço excluído com sucesso")
+    const duration = Date.now() - startTime
+    logger.performance('delete-address', duration)
+    logger.info('ADDRESS_API', 'Endereço excluído com sucesso', { addressId: params.id })
 
     return NextResponse.json({ message: "Endereço excluído com sucesso" })
   } catch (error) {
-    console.error("Erro ao excluir endereço:", error)
+    const duration = Date.now() - startTime
+    logger.performance('delete-address', duration)
+    logger.apiError('DELETE', `/api/addresses/${params.id}`, error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

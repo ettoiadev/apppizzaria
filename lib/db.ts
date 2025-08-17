@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger'
 
 // Cliente Supabase para operações diretas
 const supabase = createClient(
@@ -29,30 +30,30 @@ export async function supabaseQuery(text: string, params?: any[]) {
     const duration = Date.now() - start;
     
     if (enableQueryLogs) {
-      console.log('🔍 Supabase Query:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
-      console.log('⏱️  Duration:', duration + 'ms');
+      logger.debug('MODULE', '🔍 Supabase Query:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+      logger.debug('MODULE', '⏱️  Duration:', duration + 'ms');
     }
     
     if (error) {
-      console.error('❌ Supabase Query Error:', error);
+      logger.error('MODULE', '❌ Supabase Query Error:', error);
       throw error;
     }
     
     return { rows: data, rowCount: data?.length || 0 };
   } catch (err) {
     const duration = Date.now() - start;
-    console.error('❌ Supabase Query Error:', err);
-    console.error('📝 Query:', text);
-    console.error('📊 Params:', params);
-    console.error('⏱️  Duration:', duration + 'ms');
+    logger.error('MODULE', '❌ Supabase Query Error:', err);
+    logger.error('MODULE', '📝 Query:', text);
+    logger.error('MODULE', '📊 Params:', params);
+    logger.error('MODULE', '⏱️  Duration:', duration + 'ms');
     throw err;
   }
 }
 
 // Função para debug de queries
 export function debugQuery(text: string, params?: any[]) {
-  console.log('🔍 Debug Query:', text);
-  console.log('📊 Params:', params);
+  logger.debug('MODULE', '🔍 Debug Query:', text);
+  logger.debug('MODULE', '📊 Params:', params);
 }
 
 // Exportar clientes Supabase

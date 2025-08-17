@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[DRIVERS] Iniciando busca de entregadores no Supabase")
+    logger.debug('MODULE', "[DRIVERS] Iniciando busca de entregadores no Supabase")
     
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
@@ -28,11 +29,11 @@ export async function GET(request: NextRequest) {
     const { data: drivers, error: driversError } = await driversQuery
 
     if (driversError) {
-      console.error('[DRIVERS] Erro ao buscar entregadores:', driversError)
+      logger.error('MODULE', '[DRIVERS] Erro ao buscar entregadores:', driversError)
       throw driversError
     }
 
-    console.log(`[DRIVERS] Encontrados ${drivers?.length || 0} entregadores no Supabase`)
+    logger.debug('MODULE', `[DRIVERS] Encontrados ${drivers?.length || 0} entregadores no Supabase`)
 
     // Buscar pedidos ativos para entregadores ocupados
     const driversWithOrders = await Promise.all(
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
               currentOrders: orders?.map((order: any) => order.id) || []
             }
           } catch (orderError) {
-            console.warn(`[DRIVERS] Erro ao buscar pedidos do entregador ${driver.id}:`, orderError)
+            logger.warn('MODULE', `[DRIVERS] Erro ao buscar pedidos do entregador ${driver.id}:`, orderError)
             return { ...driver, currentOrders: [] }
           }
         }
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
         0
     }
 
-    console.log(`[DRIVERS] Retornando dados reais:`, statistics)
+    logger.debug('MODULE', `[DRIVERS] Retornando dados reais:`, statistics)
     
     return NextResponse.json({
       drivers: driversWithOrders,
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error("[DRIVERS] Erro ao conectar com Supabase:", error)
+    logger.error('MODULE', "[DRIVERS] Erro ao conectar com Supabase:", error)
     
     // Retornar erro genérico para Supabase
     return NextResponse.json({
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[DRIVERS] Iniciando criação de entregador")
+    logger.debug('MODULE', "[DRIVERS] Iniciando criação de entregador")
     
     const data = await request.json()
     const { name, email, phone, vehicleType, vehiclePlate, currentLocation } = data
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      console.error('[DRIVERS] Erro ao criar entregador:', insertError)
+      logger.error('MODULE', '[DRIVERS] Erro ao criar entregador:', insertError)
       
       // Verificar se é erro de email duplicado
       if (insertError.code === '23505' && insertError.message.includes('email')) {
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
       currentOrders: []
     }
 
-    console.log(`[DRIVERS] Entregador criado com sucesso: ${newDriver.name}`)
+    logger.debug('MODULE', `[DRIVERS] Entregador criado com sucesso: ${newDriver.name}`)
 
     return NextResponse.json({
       driver: driverWithOrders,
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error("[DRIVERS] Erro ao criar entregador:", error)
+    logger.error('MODULE', "[DRIVERS] Erro ao criar entregador:", error)
     
     return NextResponse.json({
       error: "Erro interno do servidor",

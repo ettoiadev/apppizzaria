@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { MapPin, Plus, Edit, Trash2, Check, ArrowLeft, Loader2, AlertCircle } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface Address {
   id: string
@@ -57,7 +58,7 @@ export default function ManageAddressesPage() {
       setError("")
 
       try {
-        console.log(`Carregando endereços para userId: ${user.id}`)
+        logger.debug('MODULE', `Carregando endereços para userId: ${user.id}`)
         const response = await fetch(`/api/addresses?userId=${user.id}`)
 
         if (!response.ok) {
@@ -65,16 +66,16 @@ export default function ManageAddressesPage() {
         }
 
         const data = await response.json()
-        console.log("Endereços carregados:", data)
+        logger.debug('MODULE', "Endereços carregados:", data)
 
         if (data.addresses && Array.isArray(data.addresses)) {
           setAddresses(data.addresses)
         } else {
-          console.log("Nenhum endereço encontrado")
+          logger.debug('MODULE', "Nenhum endereço encontrado")
           setAddresses([])
         }
       } catch (err) {
-        console.error("Erro ao carregar endereços:", err)
+        logger.error('MODULE', "Erro ao carregar endereços:", err)
         setError("Não foi possível carregar seus endereços. Tente novamente.")
       } finally {
         setLoading(false)
@@ -153,7 +154,7 @@ export default function ManageAddressesPage() {
       const url = isEditing ? `/api/addresses/${editingAddress.id}` : "/api/addresses"
       const method = isEditing ? "PUT" : "POST"
 
-      console.log(`${method} ${url} - Dados:`, addressData)
+      logger.debug('MODULE', `${method} ${url} - Dados:`, addressData)
 
       const response = await fetch(url, {
         method,
@@ -201,7 +202,7 @@ export default function ManageAddressesPage() {
         description: isEditing ? "Endereço atualizado com sucesso!" : "Endereço adicionado com sucesso!",
       })
     } catch (err) {
-      console.error("Erro ao salvar endereço:", err)
+      logger.error('MODULE', "Erro ao salvar endereço:", err)
       const errorMessage = err instanceof Error ? err.message : "Não foi possível salvar o endereço. Tente novamente."
       setError(errorMessage)
       toast({
@@ -234,7 +235,7 @@ export default function ManageAddressesPage() {
         description: "Endereço removido com sucesso!",
       })
     } catch (err) {
-      console.error("Erro ao excluir endereço:", err)
+      logger.error('MODULE', "Erro ao excluir endereço:", err)
       toast({
         title: "Erro",
         description: "Não foi possível excluir o endereço.",
@@ -268,7 +269,7 @@ export default function ManageAddressesPage() {
         description: "Endereço definido como padrão!",
       })
     } catch (err) {
-      console.error("Erro ao definir endereço padrão:", err)
+      logger.error('MODULE', "Erro ao definir endereço padrão:", err)
       toast({
         title: "Erro",
         description: "Não foi possível definir como endereço padrão.",

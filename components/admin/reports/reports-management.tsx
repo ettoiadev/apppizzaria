@@ -10,6 +10,7 @@ import { DeliveryPerformanceChart } from "./delivery-performance-chart"
 import { ReportFilters } from "./report-filters"
 import { ExportReports } from "./export-reports"
 import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Users, Clock, Star, Package, Bike, AlertCircle, RefreshCw } from "lucide-react"
+import { logger } from "@/lib/logger"
 
 interface ReportsStats {
   totalSales: number
@@ -112,15 +113,13 @@ export function ReportsManagement() {
       const drivers = Array.isArray(driversData) ? driversData : (driversData.drivers || [])
       const customers = Array.isArray(customersData) ? customersData : (customersData.customers || [])
 
-      // Log para debug (apenas em desenvolvimento)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Relatórios - Dados carregados:', {
-          totalPedidos: orders.length,
-          totalEntregadores: drivers.length,
-          totalClientes: customers.length,
-          periodo: dateRange
-        })
-      }
+      // Log para debug
+      logger.info('Dados dos relatórios carregados', {
+        totalPedidos: orders.length,
+        totalEntregadores: drivers.length,
+        totalClientes: customers.length,
+        periodo: dateRange
+      })
 
       // Filtrar pedidos por período atual
       const currentOrders = orders.filter((order: any) => {
@@ -175,17 +174,15 @@ export function ReportsManagement() {
         deliveriesGrowth = 100 // Primeiras entregas
       }
 
-      // Log para debug (apenas em desenvolvimento)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('💰 Relatórios - Métricas calculadas:', {
-          vendasAtual: totalSales,
-          vendasAnterior: previousSales,
-          crescimentoVendas: salesGrowth.toFixed(1) + '%',
-          pedidosAtual: totalOrders,
-          pedidosAnterior: previousOrdersCount,
-          crescimentoPedidos: ordersGrowth.toFixed(1) + '%'
-        })
-      }
+      // Log das métricas calculadas
+      logger.info('Métricas dos relatórios calculadas', {
+        vendasAtual: totalSales,
+        vendasAnterior: previousSales,
+        crescimentoVendas: salesGrowth.toFixed(1) + '%',
+        pedidosAtual: totalOrders,
+        pedidosAnterior: previousOrdersCount,
+        crescimentoPedidos: ordersGrowth.toFixed(1) + '%'
+      })
 
       // Calcular tempo médio de entrega com validação aprimorada
       let avgDeliveryTime = 35 // Valor padrão baseado no sistema
@@ -294,25 +291,23 @@ export function ReportsManagement() {
         deliveryPersonsChange: 0, // Seria necessário histórico de entregadores
       }
 
-      // Log final para debug (apenas em desenvolvimento)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📈 Relatórios - Estatísticas finais:', {
-          periodo: dateRange,
-          vendas: newStats.totalSales,
-          crescimentoVendas: newStats.salesGrowth + '%',
-          pedidos: newStats.totalOrders,
-          crescimentoPedidos: newStats.ordersGrowth + '%',
-          ticketMedio: newStats.avgOrderValue,
-          tempoEntrega: newStats.avgDeliveryTime + 'min',
-          clientesUnicos: newStats.totalCustomers,
-          entregadores: newStats.activeDeliveryPersons + '/' + totalDrivers
-        })
-      }
+      // Log das estatísticas finais
+      logger.info('Estatísticas dos relatórios finalizadas', {
+        periodo: dateRange,
+        vendas: newStats.totalSales,
+        crescimentoVendas: newStats.salesGrowth + '%',
+        pedidos: newStats.totalOrders,
+        crescimentoPedidos: newStats.ordersGrowth + '%',
+        ticketMedio: newStats.avgOrderValue,
+        tempoEntrega: newStats.avgDeliveryTime + 'min',
+        clientesUnicos: newStats.totalCustomers,
+        entregadores: newStats.activeDeliveryPersons + '/' + totalDrivers
+      })
 
       setStats(newStats)
 
     } catch (error) {
-      console.error("Erro ao carregar dados dos relatórios:", error)
+      logger.error("Erro ao carregar dados dos relatórios", { error })
       
       let errorMessage = "Erro ao carregar dados dos relatórios"
       if (error instanceof Error) {

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Save, MapPin, Clock, DollarSign, Plus, Trash2 } from "lucide-react"
+import { logger } from '@/lib/logger'
 
 interface DeliverySettingsProps {
   settings: Record<string, any>
@@ -66,10 +67,10 @@ export function DeliverySettings({ settings: initialSettings, onSave, onMarkUnsa
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      console.log("Saving delivery settings:", settings)
+      logger.debug('MODULE', "Saving delivery settings:", settings)
       await onSave(settings)
     } catch (error) {
-      console.error("Error saving delivery settings:", error)
+      logger.error('MODULE', "Error saving delivery settings:", error)
     } finally {
       setIsLoading(false)
     }

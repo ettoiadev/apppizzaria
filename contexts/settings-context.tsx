@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AppSettings } from '@/hooks/use-app-settings'
+import { logger } from '@/lib/logger'
 
 interface SettingsContextType {
   settings: AppSettings
@@ -87,7 +88,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       }
       setError(null)
     } catch (err) {
-      console.error('Erro ao carregar configurações:', err)
+      logger.error('MODULE', 'Erro ao carregar configurações:', err)
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
       // Manter configurações padrão em caso de erro
       setSettings(defaultSettings)
