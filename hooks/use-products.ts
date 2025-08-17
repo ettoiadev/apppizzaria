@@ -12,7 +12,7 @@ export function useProducts() {
 
   const loadProducts = useCallback(async () => {
     try {
-      debugLog.product.saving("Carregando produtos")
+      debugLog("Carregando produtos")
       setLoading(true)
       setError(null)
 
@@ -29,10 +29,10 @@ export function useProducts() {
       }
 
       const data = await response.json()
-      debugLog.product.success(`${data.length} produtos carregados`)
+      debugLog(`${data.length} produtos carregados`)
       setProducts(data)
     } catch (err: any) {
-      debugLog.product.error("Erro ao carregar produtos", err)
+      debugLog("Erro ao carregar produtos", err)
       setError(err.message)
       setProducts([])
     } finally {
@@ -41,7 +41,7 @@ export function useProducts() {
   }, [])
 
   const refreshProducts = useCallback(async () => {
-    debugLog.product.saving("Refresh manual solicitado")
+    debugLog("Refresh manual solicitado")
     await loadProducts()
   }, [loadProducts])
 

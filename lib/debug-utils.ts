@@ -1,6 +1,12 @@
 // Debug utilities for conditional logging in production
 const isProduction = process.env.NODE_ENV === 'production'
 
+export const debugLog = (...args: any[]) => {
+  if (!isProduction) {
+    console.log('[DEBUG]', ...args)
+  }
+}
+
 export const logger = {
   log: (...args: any[]) => {
     if (!isProduction) {

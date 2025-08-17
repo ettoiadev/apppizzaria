@@ -289,28 +289,27 @@ export async function DELETE(
       console.log(`[DRIVERS] Aplicando soft-delete - entregador tem histórico de entregas`)
       
       // Tentar aplicar soft-delete usando coluna 'deleted_at'
-      let hasSoftDeleteColumns = false
+      let hasSoftDeleteColumns = false;
       try {
         const { error: deletedAtUpdateError } = await supabase
           .from('drivers')
           .update({ 
             deleted_at: new Date().toISOString(),
-              updated_at: new Date().toISOString() 
-            })
-            .eq('id', params.id)
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', params.id);
           
-          if (!deletedAtUpdateError) {
-            hasSoftDeleteColumns = true
-            console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`)
-          }
+        if (!deletedAtUpdateError) {
+          hasSoftDeleteColumns = true;
+          console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`);
         }
       } catch (softDeleteError) {
-        console.warn('[DRIVERS] Erro na verificação de soft-delete:', softDeleteError)
+        console.warn('[DRIVERS] Erro na verificação de soft-delete:', softDeleteError);
       }
 
       // Se não tem colunas de soft-delete, adicionar uma estratégia alternativa
       if (!hasSoftDeleteColumns) {
-        console.log(`[DRIVERS] Sem colunas de soft-delete disponíveis, mas preservando por segurança`)
+        console.log(`[DRIVERS] Sem colunas de soft-delete disponíveis, mas preservando por segurança`);
         return NextResponse.json({
           error: "Não é possível remover entregador",
           message: `O entregador ${driver.name} possui histórico de ${totalOrdersCount} entrega(s) e não pode ser removido para preservar os dados históricos.`,
@@ -320,7 +319,7 @@ export async function DELETE(
             totalOrders: totalOrdersCount,
             hasHistory: true
           }
-        }, { status: 400 })
+        }, { status: 400 });
       }
 
       return NextResponse.json({
@@ -331,11 +330,11 @@ export async function DELETE(
           totalDeliveries: driver.total_deliveries || 0,
           totalOrders: totalOrdersCount
         }
-      })
+      });
     }
 
     // REGRA 3: Delete físico apenas se não há histórico
-    console.log(`[DRIVERS] Aplicando delete físico - sem histórico de entregas`)
+    console.log(`[DRIVERS] Aplicando delete físico - sem histórico de entregas`);
     
     try {
       // Remove referências em outras tabelas se necessário
@@ -368,12 +367,12 @@ export async function DELETE(
       })
 
     } catch (deleteError) {
-      console.error(`[DRIVERS] Erro durante delete físico:`, deleteError)
-      throw deleteError
+      console.error(`[DRIVERS] Erro durante delete físico:`, deleteError);
+      throw deleteError;
     }
 
   } catch (error: any) {
-    console.error(`[DRIVERS] Erro ao processar exclusão do entregador ${params.id}:`, error)
+    console.error(`[DRIVERS] Erro ao processar exclusão do entregador ${params.id}:`, error);
     
     // Tratamento específico de erros do Supabase
     if (error.code === '23503' || (error.message && error.message.includes('foreign key'))) {
@@ -381,13 +380,13 @@ export async function DELETE(
         error: "Violação de integridade referencial",
         message: "Este entregador possui pedidos associados e não pode ser removido. Os dados históricos devem ser preservados.",
         suggestion: "Desative o entregador em vez de removê-lo."
-      }, { status: 400 })
+      }, { status: 400 });
     }
 
     return NextResponse.json({
       error: "Erro interno do servidor",
       message: "Falha inesperada ao processar a exclusão do entregador.",
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

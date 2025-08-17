@@ -101,8 +101,9 @@ export function DeliveryManagement() {
       
       return data
     },
-    refetchOnWindowFocus: true,
-    staleTime: 1000 * 60 * 2, // 2 minutos
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchInterval: 1000 * 30, // Refetch a cada 30 segundos
   })
 
   // Mutation para criar entregador
@@ -286,6 +287,11 @@ export function DeliveryManagement() {
     },
   })
 
+  // Função para recarregar dados
+  const handleRefresh = () => {
+    refetch()
+  }
+
   const drivers = driversData?.drivers || []
   const statistics = driversData?.statistics || {
     total: 0,
@@ -324,7 +330,7 @@ export function DeliveryManagement() {
               }
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => setShowAddModal(true)} disabled={!!error}>
+              <Button onClick={() => setShowAddModal(true)} disabled={Boolean(error)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Primeiro Entregador
               </Button>
@@ -336,7 +342,7 @@ export function DeliveryManagement() {
             {error && (
               <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
                 <p className="text-sm text-red-600">
-                  ⚠️ Problema de conectividade: {error.message}
+                  ⚠️ Problema de conectividade: {error instanceof Error ? error.message : 'Erro desconhecido'}
                 </p>
                 <p className="text-xs text-red-500 mt-1">
                   Verifique se o PostgreSQL está rodando e a tabela drivers foi criada.
@@ -446,9 +452,7 @@ export function DeliveryManagement() {
     }
   }
 
-  const handleRefresh = () => {
-    refetch()
-  }
+
 
   const handleDeleteDriver = () => {
     if (showDeleteModal) {

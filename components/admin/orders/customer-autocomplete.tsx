@@ -158,7 +158,7 @@ export function CustomerAutocomplete({ onCustomerSelect, orderType, disabled = f
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Digite nome ou telefone do cliente..."
-            disabled={disabled || (selectedCustomer && !isEditing)}
+            disabled={disabled || (selectedCustomer && !isEditing) || false}
             className="pl-10"
           />
           {isSearching && (
@@ -293,4 +293,4 @@ export function CustomerAutocomplete({ onCustomerSelect, orderType, disabled = f
       )}
     </div>
   )
-} 
+}

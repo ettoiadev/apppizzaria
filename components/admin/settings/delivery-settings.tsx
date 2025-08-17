@@ -12,9 +12,10 @@ import { Save, MapPin, Clock, DollarSign, Plus, Trash2 } from "lucide-react"
 interface DeliverySettingsProps {
   settings: Record<string, any>
   onSave: (settings: Record<string, any>) => Promise<boolean>
+  onMarkUnsaved?: () => void
 }
 
-export function DeliverySettings({ settings: initialSettings, onSave }: DeliverySettingsProps) {
+export function DeliverySettings({ settings: initialSettings, onSave, onMarkUnsaved }: DeliverySettingsProps) {
   const [settings, setSettings] = useState({
     deliveryEnabled: initialSettings.deliveryEnabled ?? true,
     freeDeliveryMinimum: initialSettings.freeDeliveryMinimum || 50.0,
@@ -33,12 +34,14 @@ export function DeliverySettings({ settings: initialSettings, onSave }: Delivery
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setSettings((prev) => ({ ...prev, [field]: value }))
+    onMarkUnsaved?.()
   }
 
   const handleAreaChange = (index: number, field: string, value: string | number) => {
     const updatedAreas = [...settings.deliveryAreas]
     updatedAreas[index] = { ...updatedAreas[index], [field]: value }
     setSettings((prev) => ({ ...prev, deliveryAreas: updatedAreas }))
+    onMarkUnsaved?.()
   }
 
   const addDeliveryArea = () => {
@@ -48,14 +51,16 @@ export function DeliverySettings({ settings: initialSettings, onSave }: Delivery
         deliveryAreas: [...prev.deliveryAreas, newArea],
       }))
       setNewArea({ name: "", fee: 0, maxDistance: 0 })
+      onMarkUnsaved?.()
     }
   }
 
   const removeDeliveryArea = (index: number) => {
     setSettings((prev) => ({
       ...prev,
-      deliveryAreas: prev.deliveryAreas.filter((_, i) => i !== index),
+      deliveryAreas: prev.deliveryAreas.filter((_: any, i: number) => i !== index),
     }))
+    onMarkUnsaved?.()
   }
 
   const handleSave = async () => {
@@ -155,7 +160,7 @@ export function DeliverySettings({ settings: initialSettings, onSave }: Delivery
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            {settings.deliveryAreas.map((area, index) => (
+            {settings.deliveryAreas.map((area: any, index: number) => (
               <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
                 <div className="flex-1 grid grid-cols-3 gap-3">
                   <Input

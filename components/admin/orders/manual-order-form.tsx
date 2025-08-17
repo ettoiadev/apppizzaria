@@ -773,7 +773,7 @@ export function ManualOrderForm({ onSuccess }: ManualOrderFormProps) {
                   ? `${selectedCustomer.name} - ${selectedCustomer.phone}` 
                   : "Digite nome ou telefone do cliente..."
                 }
-                disabled={selectedCustomer && !isEditingCustomer}
+                disabled={(selectedCustomer && !isEditingCustomer) || false}
                 className="pl-10"
               />
               {isSearching && (
@@ -1468,7 +1468,7 @@ function AdminProductModal({
         
         console.log('🍕 [ADMIN] Pizzas disponíveis carregadas:', pizzas.length)
         console.log('🍕 [ADMIN] Produto atual:', product.name)
-        console.log('🍕 [ADMIN] Lista de pizzas:', pizzas.map(p => p.name))
+        console.log('🍕 [ADMIN] Lista de pizzas:', pizzas.map((p: Product) => p.name))
         
         setAvailablePizzas(pizzas)
       } else {
@@ -1938,4 +1938,4 @@ function AdminProductModal({
       </DialogContent>
     </Dialog>
   )
-} 
+}

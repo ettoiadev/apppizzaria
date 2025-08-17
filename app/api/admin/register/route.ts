@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const { data: existingUser, error: userCheckError } = await supabase.auth.admin.getUserByEmail(email.toLowerCase())
-
-    if (existingUser.user) {
+    const { data: existingUsers, error: userCheckError } = await supabase.auth.admin.listUsers()
+    
+    if (existingUsers?.users?.some(user => user.email?.toLowerCase() === email.toLowerCase())) {
       return NextResponse.json({ error: "Este email já está cadastrado" }, { status: 400 })
     }
 

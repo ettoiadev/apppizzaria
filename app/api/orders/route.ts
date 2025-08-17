@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar dados dos profiles para os pedidos que têm user_id
-    const userIds = orders?.filter(order => order.user_id).map(order => order.user_id) || []
-    let profilesData = []
+    const userIds = orders?.filter(order => order?.user_id).map(order => order.user_id) || []
+    let profilesData: any[] = []
     
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
