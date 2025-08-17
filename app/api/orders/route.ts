@@ -371,7 +371,7 @@ export async function POST(request: NextRequest) {
     console.error("Stack:", error.stack)
     
     if (error.code) {
-      console.error("Código PostgreSQL:", error.code)
+      console.error("Código Supabase:", error.code)
       console.error("Detalhe:", error.detail)
       console.error("Hint:", error.hint)
     }

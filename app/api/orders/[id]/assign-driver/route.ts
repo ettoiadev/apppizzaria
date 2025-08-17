@@ -129,7 +129,7 @@ export async function PATCH(
   } catch (error: any) {
     console.error("Erro ao atribuir entregador:", error)
     
-    // Tratamento específico de erros PostgreSQL
+    // Tratamento específico de erros Supabase
     if (error.code) {
       switch (error.code) {
         case '23505': // unique_violation
@@ -153,7 +153,7 @@ export async function PATCH(
             { status: 500 }
           )
         default:
-          console.error("Erro PostgreSQL não tratado:", error.code, error.message)
+          console.error("Erro Supabase não tratado:", error.code, error.message)
       }
     }
 

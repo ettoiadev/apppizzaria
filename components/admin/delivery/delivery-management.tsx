@@ -325,7 +325,7 @@ export function DeliveryManagement() {
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum entregador cadastrado</h3>
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
               {error 
-                ? "Erro ao conectar com o banco de dados. Verifique se o PostgreSQL está configurado corretamente."
+                ? "Erro ao conectar com o banco de dados. Verifique se o Supabase está configurado corretamente."
                 : "Você ainda não possui entregadores cadastrados. Adicione o primeiro entregador para começar."
               }
             </p>
@@ -345,7 +345,7 @@ export function DeliveryManagement() {
                   ⚠️ Problema de conectividade: {error instanceof Error ? error.message : 'Erro desconhecido'}
                 </p>
                 <p className="text-xs text-red-500 mt-1">
-                  Verifique se o PostgreSQL está rodando e a tabela drivers foi criada.
+                  Verifique se o Supabase está configurado e a tabela drivers foi criada.
                 </p>
               </div>
             )}

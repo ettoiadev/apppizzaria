@@ -62,8 +62,8 @@ export async function GET(
     
     if (error.code === 'ECONNREFUSED') {
       return NextResponse.json({
-        error: "Não foi possível conectar ao PostgreSQL",
-        message: "Verifique se o PostgreSQL está rodando"
+        error: "Não foi possível conectar ao Supabase",
+        message: "Verifique se o Supabase está configurado"
       }, { status: 503 })
     }
 

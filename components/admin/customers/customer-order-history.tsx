@@ -48,7 +48,7 @@ export function CustomerOrderHistory({ customerId, isOpen, onClose }: CustomerOr
     return paymentMapping[backendValue] || backendValue
   }
 
-  // Buscar pedidos reais do banco de dados PostgreSQL
+  // Buscar pedidos reais do banco de dados Supabase
   const { data: orders = [], isLoading, error, refetch } = useQuery({
     queryKey: ["customer-orders", customerId],
     queryFn: async () => {

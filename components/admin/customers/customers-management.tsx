@@ -18,7 +18,7 @@ export function CustomersManagement() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [showOrderHistory, setShowOrderHistory] = useState<string | null>(null)
 
-  // Buscar clientes reais do banco de dados PostgreSQL
+  // Buscar clientes reais do banco de dados Supabase
   const { data: customersData, isLoading, error, refetch } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
@@ -335,4 +335,4 @@ export function CustomersManagement() {
       )}
     </div>
   )
-} 
+}

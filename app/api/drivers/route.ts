@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error("[DRIVERS] Erro ao conectar com PostgreSQL:", error)
+    console.error("[DRIVERS] Erro ao conectar com Supabase:", error)
     
     // Retornar erro genérico para Supabase
     return NextResponse.json({
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     if (error.code === '28P01') {
       return NextResponse.json({
-        error: "Falha na autenticação PostgreSQL",
+        error: "Falha na autenticação Supabase",
         message: "Verifique as credenciais de acesso ao banco",
         drivers: [],
         statistics: { total: 0, available: 0, busy: 0, offline: 0, averageDeliveryTime: 0 }
