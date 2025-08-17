@@ -288,26 +288,13 @@ export async function DELETE(
     if (hasOrderHistory || (driver.total_deliveries && driver.total_deliveries > 0)) {
       console.log(`[DRIVERS] Aplicando soft-delete - entregador tem histórico de entregas`)
       
-      // Tentar aplicar soft-delete usando coluna 'active' primeiro
+      // Tentar aplicar soft-delete usando coluna 'deleted_at'
       let hasSoftDeleteColumns = false
       try {
-        const { error: activeUpdateError } = await supabase
+        const { error: deletedAtUpdateError } = await supabase
           .from('drivers')
           .update({ 
-            active: false, 
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', params.id)
-        
-        if (!activeUpdateError) {
-          hasSoftDeleteColumns = true
-          console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'active'`)
-        } else {
-          // Tentar com coluna 'deleted_at'
-          const { error: deletedAtUpdateError } = await supabase
-            .from('drivers')
-            .update({ 
-              deleted_at: new Date().toISOString(),
+            deleted_at: new Date().toISOString(),
               updated_at: new Date().toISOString() 
             })
             .eq('id', params.id)

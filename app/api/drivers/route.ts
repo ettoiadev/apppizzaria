@@ -16,8 +16,7 @@ export async function GET(request: NextRequest) {
     // Buscar entregadores com filtros
     let driversQuery = supabase
       .from('drivers')
-      .select('id, name, email, phone, vehicle_type, vehicle_plate, status, current_location, total_deliveries, average_rating, average_delivery_time, created_at, updated_at, last_active_at, active')
-      .or('active.is.null,active.eq.true') // Filtrar apenas entregadores ativos
+      .select('id, name, email, phone, vehicle_type, vehicle_plate, status, current_location, total_deliveries, average_rating, average_delivery_time, created_at, updated_at, last_active_at')
       .order('status', { ascending: false })
       .order('name', { ascending: true })
 
