@@ -25,3 +25,4 @@ Restrições
 Não inventar nomes de tabelas, colunas ou arquivos que não existam no projeto.
 Caso não tenha certeza, declarar explicitamente que é uma suposição.
 Nunca sugerir uso de serviços externos de banco, APIs genéricas ou armazenamento que não seja o Supabase.
+Ao final de cada implementação ou correção sugira um commit curto do que foi feito para que eu possa fazer um push no github 

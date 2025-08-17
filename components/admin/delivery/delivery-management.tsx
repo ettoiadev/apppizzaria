@@ -367,7 +367,9 @@ export function DeliveryManagement() {
         person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         person.phone.includes(searchTerm)
 
-      return matchesSearch
+      const matchesStatus = statusFilter === "all" || person.status === statusFilter
+
+      return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
       // Sort by status priority: available > busy > offline
