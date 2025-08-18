@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -563,6 +563,9 @@ export function OrdersManagement() {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Criar Pedido Manual</DialogTitle>
+                <DialogDescription>
+                  Crie um novo pedido manualmente inserindo os dados do cliente e produtos.
+                </DialogDescription>
               </DialogHeader>
               <ManualOrderForm onSuccess={handleManualOrderSuccess} />
             </DialogContent>
@@ -790,6 +793,9 @@ export function OrdersManagement() {
                         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>Detalhes do Pedido #{order.id.slice(-8)}</DialogTitle>
+                            <DialogDescription>
+                              Visualize todas as informações detalhadas deste pedido, incluindo itens, cliente e status.
+                            </DialogDescription>
                           </DialogHeader>
                           {selectedOrder && (
                             <div className="space-y-4">

@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Mail, Phone, MapPin, Calendar, ShoppingBag, DollarSign, Star } from "lucide-react"
@@ -83,6 +83,9 @@ export function CustomerDetailsModal({ customer, isOpen, onClose }: CustomerDeta
             {customer.name}
             <Badge className={getStatusColor(customer.status)}>{getStatusLabel(customer.status)}</Badge>
           </DialogTitle>
+          <DialogDescription>
+            Visualize as informações detalhadas do cliente, incluindo histórico de pedidos e dados de contato.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -135,6 +135,9 @@ export function SelectDriverModal({ orderId, isOpen, onClose, onAssign }: Select
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Selecionar Entregador</DialogTitle>
+          <DialogDescription>
+            Escolha um entregador disponível para realizar a entrega deste pedido.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -275,4 +278,4 @@ export function SelectDriverModal({ orderId, isOpen, onClose, onAssign }: Select
       </DialogContent>
     </Dialog>
   )
-} 
+}

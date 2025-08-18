@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -119,6 +119,9 @@ export function CustomerOrderHistory({ customerId, isOpen, onClose }: CustomerOr
               Atualizar
             </Button>
           </DialogTitle>
+          <DialogDescription>
+            Visualize todos os pedidos realizados por este cliente, incluindo status e detalhes de cada pedido.
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (

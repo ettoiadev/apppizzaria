@@ -3,7 +3,7 @@
 
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -180,6 +180,9 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
               <UserPlus className="w-5 h-5" />
               Criar Conta de Administrador
             </DialogTitle>
+            <DialogDescription>
+              Verificando permissões para criação de conta de administrador...
+            </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -197,6 +200,9 @@ export function AdminRegisterModal({ isOpen, onClose, onSuccess }: AdminRegister
             <UserPlus className="w-5 h-5" />
             Criar Conta de Administrador
           </DialogTitle>
+          <DialogDescription>
+            Preencha os dados abaixo para criar uma nova conta de administrador no sistema.
+          </DialogDescription>
         </DialogHeader>
 
         {!registrationAllowed ? (

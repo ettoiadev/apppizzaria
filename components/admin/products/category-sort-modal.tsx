@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -106,9 +106,9 @@ export function CategorySortModal({ open, onOpenChange, categories, onSave }: Ca
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Ordenar Categorias</DialogTitle>
-          <p className="text-sm text-gray-600">
+          <DialogDescription>
             Defina a ordem em que as categorias aparecerão no cardápio
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 overflow-y-auto max-h-[60vh] pr-2">
@@ -203,4 +203,4 @@ export function CategorySortModal({ open, onOpenChange, categories, onSave }: Ca
       </DialogContent>
     </Dialog>
   )
-} 
+}

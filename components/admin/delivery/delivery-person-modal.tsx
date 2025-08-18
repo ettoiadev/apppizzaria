@@ -2,7 +2,7 @@
 
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -87,6 +87,9 @@ export function DeliveryPersonModal({ deliveryPerson, isOpen, onClose, onSave }:
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? `Editar ${deliveryPerson.name}` : "Novo Entregador"}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Edite as informações do entregador selecionado." : "Cadastre um novo entregador para a equipe de delivery."}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

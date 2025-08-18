@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -130,6 +130,9 @@ export function AssignOrderModal({ deliveryPersonId, isOpen, onClose, onAssign }
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Atribuir Pedido ao Entregador</DialogTitle>
+          <DialogDescription>
+            Selecione um pedido em preparo para atribuir ao entregador selecionado.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
