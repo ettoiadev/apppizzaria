@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       ...product,
       category_name: product.categories?.name,
       categoryId: product.category_id,
-      available: Boolean(product.available),
+      available: Boolean(product.active), // Mapear 'active' para 'available' na resposta
       showImage: Boolean(product.show_image ?? true),
       productNumber: product.product_number,
       sizes: product.sizes ? (typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes) : [],
@@ -74,7 +74,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         price,
         category_id: finalCategoryId,
         image,
-        available,
+        active: available, // Mapear 'available' para 'active'
         show_image: showImage ?? true,
         sizes: sizes ? JSON.stringify(sizes) : null,
         toppings: toppings ? JSON.stringify(toppings) : null,
@@ -90,7 +90,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const normalizedProduct = {
       ...product,
       categoryId: product.category_id,
-      available: Boolean(product.available),
+      available: Boolean(product.active), // Mapear 'active' para 'available' na resposta
       showImage: Boolean(product.show_image ?? true),
       productNumber: product.product_number,
       sizes: product.sizes ? (typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes) : [],
@@ -131,7 +131,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     // Preparar dados de atualização
     const updateData: any = { updated_at: new Date().toISOString() }
-    const validFields = ["name", "description", "price", "category_id", "image", "available", "show_image", "sizes", "toppings"]
+    const validFields = ["name", "description", "price", "category_id", "image", "active", "show_image", "sizes", "toppings"]
     
     Object.entries(processedBody).forEach(([key, value]) => {
       if (validFields.includes(key)) {
@@ -139,7 +139,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         if ((key === 'sizes' || key === 'toppings') && Array.isArray(value)) {
           updateData[key] = JSON.stringify(value)
         } else {
-          updateData[key] = value
+          // Mapear 'available' para 'active' para compatibilidade
+          if (key === 'available') {
+            updateData['active'] = value
+          } else {
+            updateData[key] = value
+          }
         }
       }
     })
@@ -165,7 +170,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const normalizedProduct = {
       ...product,
       categoryId: product.category_id,
-      available: Boolean(product.available),
+      available: Boolean(product.active), // Mapear 'active' para 'available' na resposta
       showImage: Boolean(product.show_image),
       sizes: product.sizes ? (typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes) : [],
       toppings: product.toppings ? (typeof product.toppings === 'string' ? JSON.parse(product.toppings) : product.toppings) : []

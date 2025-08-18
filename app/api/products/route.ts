@@ -35,11 +35,11 @@ export async function GET() {
         .select('*')
         .eq('active', true)
       
-      logger.debug('MODULE', 'Produtos sem filtro available:', allProducts?.length || 0)
+      logger.debug('MODULE', 'Produtos ativos encontrados:', allProducts?.length || 0)
       
-      // Verificar quantos estão como available = false
-      const unavailable = allProducts?.filter(p => !p.available) || []
-      logger.debug('MODULE', 'Produtos indisponíveis:', unavailable.length)
+      // Verificar quantos estão como active = false
+      const inactive = allProducts?.filter(p => !p.active) || []
+      logger.debug('MODULE', 'Produtos inativos:', inactive.length)
     }
 
     // Garantir que todos os produtos tenham propriedades essenciais
@@ -49,7 +49,7 @@ export async function GET() {
       description: product.description || "",
       categoryId: product.category_id || product.categoryId,
       category_name: product.categories?.name || '',
-      available: Boolean(product.available),
+      available: Boolean(product.active), // Mapear 'active' para 'available' na resposta
       showImage: Boolean(product.show_image ?? true),
       // Se product_number não existir, usar índice + 1 como fallback
       productNumber: product.product_number || (index + 1),
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
         price,
         category_id: finalCategoryId,
         image: image || null,
-        available,
+        active: available, // Mapear 'available' para 'active' no banco
         show_image: showImage,
         sizes: sizes ? JSON.stringify(sizes) : null,
         toppings: toppings ? JSON.stringify(toppings) : null,
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
     const normalizedProduct = {
       ...product,
       categoryId: product.category_id,
-      available: Boolean(product.available),
+      available: Boolean(product.active), // Mapear 'active' para 'available' na resposta
       showImage: Boolean(product.show_image ?? true),
       productNumber: product.product_number,
       sizes: product.sizes ? (typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes) : [],
