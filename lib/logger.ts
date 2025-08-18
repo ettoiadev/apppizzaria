@@ -172,8 +172,11 @@ export const dbError = (operation: string, table: string, error: any) =>
   logger.databaseError(operation, table, error)
 
 // Middleware para capturar erros não tratados
-if (typeof window === 'undefined') {
-  // Apenas no servidor
+// Usar uma variável global para evitar registrar múltiplos listeners
+if (typeof window === 'undefined' && !(global as any).__errorHandlersRegistered) {
+  // Apenas no servidor e apenas uma vez
+  (global as any).__errorHandlersRegistered = true
+  
   process.on('uncaughtException', (error) => {
     logger.error('SYSTEM', 'Uncaught exception', error)
     process.exit(1)
