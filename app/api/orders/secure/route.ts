@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
-import { 
 import { logger } from '@/lib/logger'
+import {
   withMiddleware, 
   rateLimit, 
   validateInput, 

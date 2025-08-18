@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { supabaseServer as supabase } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 
 export async function PATCH(
@@ -51,8 +51,6 @@ export async function PATCH(
     }
 
     logger.info('Validação inicial concluída', { orderId: params.id, newStatus: status })
-
-    const supabase = createClient()
 
     // Check if order exists and get current status
     logger.database('SELECT', 'orders', { orderId: params.id })

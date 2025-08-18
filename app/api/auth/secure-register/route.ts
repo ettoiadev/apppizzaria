@@ -7,8 +7,8 @@ import {
   securityLogger,
   type ValidationRule 
 } from "@/lib/api-middleware"
-import { 
 import { logger } from '@/lib/logger'
+import {
   validatePasswordStrength, 
   isCommonPassword, 
   sanitizeInput 
