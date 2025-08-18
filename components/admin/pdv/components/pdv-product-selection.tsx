@@ -48,15 +48,15 @@ export function PDVProductSelection({
   onClearFilters
 }: PDVProductSelectionProps) {
   return (
-    <Card className="h-fit">
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2">
           <Package className="w-5 h-5" />
-          Produtos
+          Menu de Produtos
           <Badge variant="secondary">{filteredProducts.length}</Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 flex-1 overflow-hidden flex flex-col">
         {/* Busca */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -108,7 +108,7 @@ export function PDVProductSelection({
         </div>
 
         {/* Lista de Produtos */}
-        <div className="space-y-2 max-h-96 overflow-y-auto">
+        <div className="space-y-2 flex-1 overflow-y-auto">
           {isLoadingProducts ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
@@ -155,19 +155,7 @@ export function PDVProductSelection({
           )}
         </div>
 
-        {/* Resumo */}
-        {!isLoadingProducts && (
-          <div className="pt-2 border-t">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Total de produtos:</span>
-              <span className="font-medium">{products.length}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Exibindo:</span>
-              <span className="font-medium">{filteredProducts.length}</span>
-            </div>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   )

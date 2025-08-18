@@ -193,39 +193,10 @@ export function PDVForm({ onOrderCreated }: PDVFormProps) {
         </CardHeader>
       </Card>
 
-      {/* Layout Principal - 3 Colunas */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Coluna 1: Seleção de Produtos */}
-        <div className="xl:col-span-1">
-          <PDVProductSelection
-            products={products}
-            filteredProducts={filteredProducts}
-            categories={categories}
-            searchTerm={searchTerm}
-            selectedCategory={selectedCategory}
-            isLoadingProducts={isLoadingProducts}
-            onSearchChange={handleSearchChange}
-            onCategoryChange={handleCategoryChange}
-            onAddToCart={addToCart}
-            onClearFilters={clearFilters}
-          />
-        </div>
-
-        {/* Coluna 2: Carrinho e Cliente */}
-        <div className="xl:col-span-1 space-y-6">
-          {/* Carrinho */}
-          <PDVCartDisplay
-            items={cartItems}
-            subtotal={cartTotal}
-            deliveryFee={deliveryFee}
-            discount={discount}
-            total={orderSummary.total}
-            onUpdateQuantity={updateQuantity}
-            onRemoveItem={removeFromCart}
-            onUpdateNotes={updateItemNotes}
-            onClearCart={clearCart}
-          />
-
+      {/* Layout Principal - 2 Colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+        {/* Coluna Esquerda: Dados do Cliente e Pedido */}
+        <div className="space-y-6 overflow-y-auto">
           {/* Cliente */}
           <PDVCustomerForm
             selectedCustomer={selectedCustomer}
@@ -250,10 +221,8 @@ export function PDVForm({ onOrderCreated }: PDVFormProps) {
             onCreateCustomer={() => {}}
             onToggleCreateMode={() => {}}
           />
-        </div>
 
-        {/* Coluna 3: Configurações do Pedido */}
-        <div className="xl:col-span-1">
+          {/* Configurações do Pedido */}
           <PDVOrderSettings
             orderType={orderType}
             paymentMethod={paymentMethod}
@@ -267,6 +236,35 @@ export function PDVForm({ onOrderCreated }: PDVFormProps) {
             onNotesChange={handleNotesChange}
             onDeliveryFeeChange={handleDeliveryFeeChange}
             onDiscountChange={handleDiscountChange}
+          />
+
+          {/* Carrinho/Resumo do Pedido */}
+          <PDVCartDisplay
+            items={cartItems}
+            subtotal={cartTotal}
+            deliveryFee={deliveryFee}
+            discount={discount}
+            total={orderSummary.total}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeFromCart}
+            onUpdateNotes={updateItemNotes}
+            onClearCart={clearCart}
+          />
+        </div>
+
+        {/* Coluna Direita: Menu de Produtos */}
+        <div className="overflow-y-auto">
+          <PDVProductSelection
+            products={products}
+            filteredProducts={filteredProducts}
+            categories={categories}
+            searchTerm={searchTerm}
+            selectedCategory={selectedCategory}
+            isLoadingProducts={isLoadingProducts}
+            onSearchChange={handleSearchChange}
+            onCategoryChange={handleCategoryChange}
+            onAddToCart={addToCart}
+            onClearFilters={clearFilters}
           />
         </div>
       </div>

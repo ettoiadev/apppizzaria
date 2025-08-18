@@ -65,8 +65,8 @@ export function PDVCartDisplay({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
-            Carrinho
-            <Badge variant="secondary">{items.length}</Badge>
+            Resumo do Pedido
+            <Badge variant="secondary">{items.length} {items.length === 1 ? 'item' : 'itens'}</Badge>
           </CardTitle>
           {items.length > 0 && (
             <Button
@@ -93,7 +93,7 @@ export function PDVCartDisplay({
         ) : (
           <>
             {/* Itens do Carrinho */}
-            <div className="space-y-3 max-h-64 overflow-y-auto">
+            <div className="space-y-3 max-h-80 overflow-y-auto">
               {items.map((item) => (
                 <div key={item.id} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-start justify-between">
