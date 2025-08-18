@@ -60,21 +60,21 @@ class Logger {
     
     if (this.isProduction) {
       // Em produção, usar formato estruturado para ferramentas de monitoramento
-      logger.debug('MODULE', JSON.stringify(entry))
+      console.log(JSON.stringify(entry))
     } else {
       // Em desenvolvimento, usar formato legível
-      switch (level) {
+      switch (entry.level) {
         case 'debug':
-          logger.debug('MODULE', `${prefix} ${message}`, data || '')
+          console.log(`${prefix} ${message}`, data || '')
           break
         case 'info':
-          logger.info('MODULE', `${prefix} ${message}`, data || '')
+          console.info(`${prefix} ${message}`, data || '')
           break
         case 'warn':
-          logger.warn('MODULE', `${prefix} ${message}`, data || '')
+          console.warn(`${prefix} ${message}`, data || '')
           break
         case 'error':
-          logger.error('MODULE', `${prefix} ${message}`, data || '')
+          console.error(`${prefix} ${message}`, data || '')
           break
       }
     }

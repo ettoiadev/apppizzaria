@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from "@/lib/auth"
 import { logger } from '@/lib/logger'
 
 // GET - Buscar um produto específico
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,15 +44,17 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PUT - Atualizar um produto
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    logger.debug('MODULE', `PUT /api/products/${params.id} - Iniciando atualização`)
+    
     const body = await request.json()
     const { name, description, price, category_id, categoryId, image, available, showImage, sizes, toppings } = body
 
     // Garantir compatibilidade entre categoryId e category_id
     const finalCategoryId = categoryId || category_id
 
-    // Validar dados
+    // Validar dados obrigatórios
     if (!name?.trim() || price === undefined || price < 0) {
       return NextResponse.json(
         { error: "Nome e preço são obrigatórios e o preço deve ser positivo" },
@@ -65,39 +67,57 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    // Preparar dados para atualização
+    const updateData = {
+      name: name.trim(),
+      description: description || null,
+      price: Number(price),
+      category_id: finalCategoryId || null,
+      image: image || null,
+      active: Boolean(available),
+      updated_at: new Date().toISOString()
+    }
+
+    // Remover campos undefined/null para evitar erros
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined || updateData[key] === null) {
+        delete updateData[key];
+      }
+    });
+
+    logger.debug('MODULE', 'Dados para atualização:', updateData)
+
     // Atualizar produto
     const { data: product, error } = await supabase
       .from('products')
-      .update({
-        name,
-        description,
-        price,
-        category_id: finalCategoryId,
-        image,
-        active: available, // Mapear 'available' para 'active'
-        show_image: showImage ?? true,
-        sizes: sizes ? JSON.stringify(sizes) : null,
-        toppings: toppings ? JSON.stringify(toppings) : null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()
 
-    if (error || !product) {
+    if (error) {
+      logger.error('MODULE', 'Erro do Supabase ao atualizar produto:', error)
+      return NextResponse.json({ error: "Erro ao atualizar produto" }, { status: 500 })
+    }
+
+    if (!product) {
       return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
     }
+
+    // Normalizar resposta
     const normalizedProduct = {
       ...product,
       categoryId: product.category_id,
-      available: Boolean(product.active), // Mapear 'active' para 'available' na resposta
+      available: Boolean(product.active),
       showImage: Boolean(product.show_image ?? true),
       productNumber: product.product_number,
       sizes: product.sizes ? (typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes) : [],
       toppings: product.toppings ? (typeof product.toppings === 'string' ? JSON.parse(product.toppings) : product.toppings) : []
     }
 
+    logger.debug('MODULE', 'Produto atualizado com sucesso:', normalizedProduct.name)
     return NextResponse.json({ product: normalizedProduct })
+    
   } catch (error) {
     logger.error('MODULE', "Erro ao atualizar produto:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
@@ -105,7 +125,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 // PATCH - Atualizar parcialmente um produto (ex: apenas disponibilidade)
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
     logger.debug('MODULE', 'PATCH body received:', body)
@@ -188,7 +208,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 // DELETE - Excluir um produto
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
