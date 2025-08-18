@@ -1,122 +1,695 @@
 Corrija os erros apresentados no log, lembre-se que estamos usando banco de dados unica e exclusivamente no supabase, corrija os bugs, erros, rotas, banco de dados com segurança sem quebrar a aplicação.
-[19:08:34.310] Running build in Washington, D.C., USA (East) – iad1
-[19:08:34.311] Build machine configuration: 2 cores, 8 GB
-[19:08:34.333] Cloning github.com/ettoiadev/apppizzaria (Branch: main, Commit: eddae88)
-[19:08:34.727] Cloning completed: 394.000ms
-[19:08:36.803] Restored build cache from previous deployment (D9yopLCGJXQH4boRcsKGiAscpsCM)
-[19:08:38.775] Running "vercel build"
-[19:08:39.209] Vercel CLI 45.0.10
-[19:08:39.622] Installing dependencies...
-[19:08:40.990] 
-[19:08:40.991] up to date in 1s
-[19:08:40.991] 
-[19:08:40.992] 154 packages are looking for funding
-[19:08:40.992]   run `npm fund` for details
-[19:08:41.021] Detected Next.js version: 14.2.30
-[19:08:41.025] Running "npm run build"
-[19:08:41.138] 
-[19:08:41.138] > pizzeria-delivery-platform@0.1.0 build
-[19:08:41.138] > next build
-[19:08:41.138] 
-[19:08:41.841]   ▲ Next.js 14.2.30
-[19:08:41.842]   - Environments: .env
-[19:08:41.842] 
-[19:08:41.906]    Creating an optimized production build ...
-[19:08:49.834] Failed to compile.
-[19:08:49.835] 
-[19:08:49.836] ./app/api/drivers/[id]/route.ts
-[19:08:49.836] Error: 
-[19:08:49.836]   [31mx[0m Expected a semicolon
-[19:08:49.836]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:304:1]
-[19:08:49.836]  [2m304[0m |             console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`)
-[19:08:49.836]  [2m305[0m |           }
-[19:08:49.837]  [2m306[0m |         }
-[19:08:49.837]  [2m307[0m |       } catch (softDeleteError) {
-[19:08:49.837]      : [31;1m      ^[0m
-[19:08:49.837]  [2m308[0m |         console.warn('[DRIVERS] Erro na verificação de soft-delete:', softDeleteError)
-[19:08:49.837]  [2m309[0m |       }
-[19:08:49.838]      `----
-[19:08:49.838] 
-[19:08:49.838]   [31mx[0m Expected a semicolon
-[19:08:49.838]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:304:1]
-[19:08:49.838]  [2m304[0m |             console.log(`[DRIVERS] Soft-delete aplicado usando coluna 'deleted_at'`)
-[19:08:49.839]  [2m305[0m |           }
-[19:08:49.839]  [2m306[0m |         }
-[19:08:49.839]  [2m307[0m |       } catch (softDeleteError) {
-[19:08:49.839]      : [31;1m        ^^^^^[0m
-[19:08:49.839]  [2m308[0m |         console.warn('[DRIVERS] Erro na verificação de soft-delete:', softDeleteError)
-[19:08:49.840]  [2m309[0m |       }
-[19:08:49.840]      `----
-[19:08:49.840] 
-[19:08:49.840]   [31mx[0m Expected a semicolon
-[19:08:49.840]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:335:1]
-[19:08:49.841]  [2m335[0m |     }
-[19:08:49.841]  [2m336[0m | 
-[19:08:49.841]  [2m337[0m |     // REGRA 3: Delete físico apenas se não há histórico
-[19:08:49.841]  [2m338[0m |     console.log(`[DRIVERS] Aplicando delete físico - sem histórico de entregas`)
-[19:08:49.842]      : [31;1m    ^[0m
-[19:08:49.842]  [2m339[0m |     
-[19:08:49.842]  [2m340[0m |     try {
-[19:08:49.842]  [2m341[0m |       // Remove referências em outras tabelas se necessário
-[19:08:49.843]      `----
-[19:08:49.843] 
-[19:08:49.843]   [31mx[0m Expected a semicolon
-[19:08:49.843]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:372:1]
-[19:08:49.844]  [2m372[0m |       throw deleteError
-[19:08:49.844]  [2m373[0m |     }
-[19:08:49.844]  [2m374[0m | 
-[19:08:49.844]  [2m375[0m |   } catch (error: any) {
-[19:08:49.844]      : [31;1m    ^^^^^[0m
-[19:08:49.845]  [2m376[0m |     console.error(`[DRIVERS] Erro ao processar exclusão do entregador ${params.id}:`, error)
-[19:08:49.845]  [2m377[0m |     
-[19:08:49.845]  [2m378[0m |     // Tratamento específico de erros do Supabase
-[19:08:49.850]      `----
-[19:08:49.856] 
-[19:08:49.856]   [31mx[0m Return statement is not allowed here
-[19:08:49.857]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:377:1]
-[19:08:49.857]  [2m377[0m |         
-[19:08:49.857]  [2m378[0m |         // Tratamento específico de erros do Supabase
-[19:08:49.857]  [2m379[0m |         if (error.code === '23503' || (error.message && error.message.includes('foreign key'))) {
-[19:08:49.873]  [2m380[0m | [31;1m,[0m[31;1m-[0m[31;1m>[0m       return NextResponse.json({
-[19:08:49.873]  [2m381[0m | [31;1m|[0m           error: "Violação de integridade referencial",
-[19:08:49.874]  [2m382[0m | [31;1m|[0m           message: "Este entregador possui pedidos associados e não pode ser removido. Os dados históricos devem ser preservados.",
-[19:08:49.874]  [2m383[0m | [31;1m|[0m           suggestion: "Desative o entregador em vez de removê-lo."
-[19:08:49.874]  [2m384[0m | [31;1m`[0m[31;1m-[0m[31;1m>[0m       }, { status: 400 })
-[19:08:49.875]  [2m385[0m |         }
-[19:08:49.876]  [2m386[0m |     
-[19:08:49.876]  [2m387[0m |         return NextResponse.json({
-[19:08:49.876]      `----
-[19:08:49.876] 
-[19:08:49.876]   [31mx[0m Return statement is not allowed here
-[19:08:49.876]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:384:1]
-[19:08:49.877]  [2m384[0m |           }, { status: 400 })
-[19:08:49.877]  [2m385[0m |         }
-[19:08:49.877]  [2m386[0m |     
-[19:08:49.877]  [2m387[0m | [31;1m,[0m[31;1m-[0m[31;1m>[0m     return NextResponse.json({
-[19:08:49.877]  [2m388[0m | [31;1m|[0m         error: "Erro interno do servidor",
-[19:08:49.878]  [2m389[0m | [31;1m|[0m         message: "Falha inesperada ao processar a exclusão do entregador.",
-[19:08:49.879]  [2m390[0m | [31;1m|[0m         details: process.env.NODE_ENV === 'development' ? error.message : undefined
-[19:08:49.879]  [2m391[0m | [31;1m`[0m[31;1m-[0m[31;1m>[0m     }, { status: 500 })
-[19:08:49.880]  [2m392[0m |       }
-[19:08:49.880]  [2m393[0m |     }
-[19:08:49.880]      `----
-[19:08:49.880] 
-[19:08:49.880]   [31mx[0m Expression expected
-[19:08:49.882]      ,-[[36;1;4m/vercel/path0/app/api/drivers/[id]/route.ts[0m:390:1]
-[19:08:49.883]  [2m390[0m |       details: process.env.NODE_ENV === 'development' ? error.message : undefined
-[19:08:49.883]  [2m391[0m |     }, { status: 500 })
-[19:08:49.885]  [2m392[0m |   }
-[19:08:49.886]  [2m393[0m | }
-[19:08:49.886]      : [31;1m^[0m
-[19:08:49.886]      `----
-[19:08:49.886] 
-[19:08:49.886] Caused by:
-[19:08:49.887]     Syntax Error
-[19:08:49.887] 
-[19:08:49.887] Import trace for requested module:
-[19:08:49.887] ./app/api/drivers/[id]/route.ts
-[19:08:49.887] 
-[19:08:49.891] 
-[19:08:49.891] > Build failed because of webpack errors
-[19:08:49.892] Error: Command "npm run build" exited with 1
+images/pizza-margherita.jpg:1  GET https://apppizzaria.vercel.app/images/pizza-margherita.jpg 404 (Not Found)
+Image
+aK @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+(anonymous) @ fd9d1056-4434d65adba8f320.js:1
+is @ fd9d1056-4434d65adba8f320.js:1
+o1 @ fd9d1056-4434d65adba8f320.js:1
+oZ @ fd9d1056-4434d65adba8f320.js:1
+T @ 2117-8278c2b92dd5bd50.js:1
+images/pizza-calabresa.jpg:1  GET https://apppizzaria.vercel.app/images/pizza-calabresa.jpg 404 (Not Found)
+Image
+aK @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+(anonymous) @ fd9d1056-4434d65adba8f320.js:1
+is @ fd9d1056-4434d65adba8f320.js:1
+o1 @ fd9d1056-4434d65adba8f320.js:1
+oZ @ fd9d1056-4434d65adba8f320.js:1
+T @ 2117-8278c2b92dd5bd50.js:1
+coca-cola.jpg:1  GET https://apppizzaria.vercel.app/images/coca-cola.jpg 404 (Not Found)
+Image
+aK @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+(anonymous) @ fd9d1056-4434d65adba8f320.js:1
+is @ fd9d1056-4434d65adba8f320.js:1
+o1 @ fd9d1056-4434d65adba8f320.js:1
+oZ @ fd9d1056-4434d65adba8f320.js:1
+T @ 2117-8278c2b92dd5bd50.js:1
+pizza-portuguesa.jpg:1  GET https://apppizzaria.vercel.app/images/pizza-portuguesa.jpg 404 (Not Found)
+Image
+aK @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+a9 @ fd9d1056-4434d65adba8f320.js:1
+aY @ fd9d1056-4434d65adba8f320.js:1
+(anonymous) @ fd9d1056-4434d65adba8f320.js:1
+is @ fd9d1056-4434d65adba8f320.js:1
+o1 @ fd9d1056-4434d65adba8f320.js:1
+oZ @ fd9d1056-4434d65adba8f320.js:1
+T @ 2117-8278c2b92dd5bd50.js:1
+
 NÃO ALTERE QUALQUER FUNCIONALIDADE/INTERFACE/FLUXO EXISTENTE que não esteja diretamente relacionado ao problema descrito acima.
