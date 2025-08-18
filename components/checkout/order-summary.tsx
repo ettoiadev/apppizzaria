@@ -297,6 +297,9 @@ function EditProductModal({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Erro</DialogTitle>
+            <DialogDescription>
+              Ocorreu um problema ao carregar os dados do produto.
+            </DialogDescription>
           </DialogHeader>
           <div className="p-4 text-center">
             <p>Dados do produto inválidos. Tente novamente.</p>

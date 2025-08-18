@@ -887,6 +887,9 @@ export function OrdersManagement() {
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>Cancelar Pedido</DialogTitle>
+                              <DialogDescription>
+                                Esta ação irá cancelar o pedido permanentemente. O cliente será notificado sobre o cancelamento.
+                              </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
                               <p>Tem certeza que deseja cancelar este pedido?</p>
